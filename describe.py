@@ -1,5 +1,5 @@
 import sys
-from toolkit import read_csv
+from toolkit import read_csv, extract_numeric_columns
 
 def main(argc: int, argv: list[str]) -> int:
     if argc != 2:
@@ -8,6 +8,9 @@ def main(argc: int, argv: list[str]) -> int:
         exit(1)
     try:
         dataset = read_csv(argv[1])
+        columns = extract_numeric_columns(dataset, skip=["Index"])
+        for col in columns:
+            print(f"{col.name}: {col.values[:3]}...")
     except Exception as e:
         print(e)
 
