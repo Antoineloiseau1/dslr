@@ -50,8 +50,8 @@ class Column:
         if p not in (0.25, 0.5, 0.75):
             raise ValueError("p must be 0.25, 0.5 or 0.75")
         sorted_values = sorted(self.values)
-        count = self.count
-        percent = (count - 1) * p
+        count = self.count() - 1
+        percent = count * p
         lower_index = math.floor(percent)
         upper_index = math.ceil(percent)
         fraction = percent - lower_index
@@ -68,7 +68,7 @@ def read_csv(filepath: str) -> Dataset:
         rows = [row for row in reader]
     return Dataset(header, rows)
 
-def extract_numeric_columns(dataset: Dataset, skip: list[str] = []) -> list[Column[float]]:
+def extract_numeric_columns(dataset: Dataset, skip: list[str] = []) -> list[Column]:
     columns: list[Column[float]] = []
     for index, name in enumerate(dataset.header):
         if name in skip:
