@@ -1,32 +1,52 @@
 import sys
 from toolkit import read_csv, extract_numeric_columns, Column
 
+STATS = [
+    ("Count", lambda col: col.count()),
+    ("Mean", lambda col: col.mean()),
+    ("Std", lambda col: col.std()),
+    ("Min", lambda col: col.min()),
+    ("25%", lambda col: col.percentile(0.25)),
+    ("50%", lambda col: col.percentile(0.5)),
+    ("75%", lambda col: col.percentile(0.75)),
+    ("Max", lambda col: col.max()),
+]
+
+MAX_NAME_WIDTH = 14
+GUTTER = 2
+PRECISION = 6
+
+
+def build_table(columns: list[Column]) -> list[list[str]]:
+    table = [[""] + [col.name[:MAX_NAME_WIDTH] for col in columns]]
+    for stat_name, stat_function in STATS:
+        row = [stat_name]
+        for col in columns:
+            row.append(f"{stat_function(col):.{PRECISION}f}")
+        table.append(row)
+    return table
+
+
+def compute_column_widths(table: list[list[str]]) -> list[int]:
+    widths = []
+    for index in range(len(table[0])):
+        longest = 0
+        for row in table:
+            length = len(row[index])
+            if length > longest:
+                longest = length
+        widths.append(longest if index == 0 else longest + GUTTER)
+    return widths
+
+
 def format_stats_table(columns: list[Column]) -> str:
-    stats = [
-        ("Count", lambda col: col.count()),
-        ("Mean", lambda col: col.mean()),
-        ("Std", lambda col: col.std()),
-        ("Min", lambda col: col.min()),
-        ("25%", lambda col: col.percentile(0.25)),
-        ("50%", lambda col: col.percentile(0.5)),
-        ("75%", lambda col: col.percentile(0.75)),
-        ("Max", lambda col: col.max()),
-    ]
+    table = build_table(columns)
+    widths = compute_column_widths(table)
     lines = []
-    # Largeur fixe pour chaque colonne
-    col_width = 12
-    # En-tête
-    header = [""] + [col.name[:col_width] for col in columns]
-    lines.append("".join(f"{value:>{col_width}}" for value in header))
-    # Statistiques
-    for stat_name, stat_function in stats:
-        values = [stat_function(col) for col in columns]
-        formatted_values = [
-            f"{value:>{col_width}.6f}" for value in values
-        ]
-        lines.append(
-            f"{stat_name:<{col_width}}" + "".join(formatted_values)
-        )
+    for row in table:
+        cells = [f"{row[0]:<{widths[0]}}"]
+        cells += [f"{cell:>{widths[i]}}" for i, cell in enumerate(row[1:], 1)]
+        lines.append("".join(cells).rstrip())
     return "\n".join(lines)
 
 
