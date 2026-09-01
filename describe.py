@@ -1,5 +1,5 @@
 import sys
-from toolkit import read_csv, extract_numeric_columns, Column
+from lib.toolkit import Dataset, Column
 
 STATS = [
     ("Count", lambda col: col.count()),
@@ -56,8 +56,8 @@ def main(argc: int, argv: list[str]) -> int:
         print("Usage: python describe.py <dataset.csv>", file=sys.stderr)
         exit(1)
     try:
-        dataset = read_csv(argv[1])
-        columns = extract_numeric_columns(dataset, skip=["Index"])
+        dataset = Dataset.from_csv(argv[1])
+        columns = dataset.extract_numeric_columns(skip=["Index"])
     except Exception as e:
         print(e)
         exit(1)

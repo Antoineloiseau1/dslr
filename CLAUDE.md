@@ -46,6 +46,19 @@ python logreg_train.py datasets/dataset_train.csv
 python logreg_predict.py datasets/dataset_test.csv weights.csv
 ```
 
+## Bonus
+
+| Bonus | Description |
+|---|---|
+| Stochastic gradient descent | Implémenter SGD ou mini-batch GD au lieu du batch GD classique |
+| Autres métriques | Implémenter d'autres métriques d'évaluation (precision, recall, f1-score) |
+| Softmax regression | Remplacer one-vs-all par une vraie régression softmax (multiclasse native) |
+| Feature engineering | Ajouter des features dérivées (combinaisons, polynomiales…) pour améliorer l'accuracy |
+| Visualisation avancée | Graphes supplémentaires : matrice de confusion, courbe de coût, frontières de décision |
+| Régularisation L2 | Ajouter un terme de régularisation pour éviter l'overfitting |
+| Early stopping | Arrêter l'entraînement quand la loss ne diminue plus |
+| Data augmentation | Gérer les valeurs manquantes via des stratégies d'imputation avancées |
+
 ## Formules mathématiques (annexe du sujet)
 
 - Fonction sigmoïde : `g(z) = 1 / (1 + e^(-z))`
