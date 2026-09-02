@@ -4,7 +4,6 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 import matplotlib.pyplot as plt
 from lib.toolkit import Dataset, Column
-import matplotlib.pyplot as plt
 
 
 def main(argc: int, argv: list[str]):
