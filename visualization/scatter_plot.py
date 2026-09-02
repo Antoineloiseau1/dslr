@@ -61,7 +61,7 @@ def main(argc: int, argv: list[str]):
     plt.ylabel(course_b)
     plt.title(f"{course_a} vs {course_b} (r = {best_correlation:.4f})")
     plt.tight_layout()
-    plt.savefig("scatter_plot.png")
+    plt.show()
 
 if __name__ == "__main__":
     main(len(sys.argv), sys.argv)

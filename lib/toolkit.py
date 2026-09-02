@@ -80,6 +80,17 @@ class Dataset:
     def numeric_column_names(self, skip: list[str] = []) -> list[str]:
         return [col.name for col in self.extract_numeric_columns(skip)]
 
+    def extract_numeric_column(self, name: str) -> Column:
+        if name not in self.header:
+            raise ValueError(f"{name} not found in dataset")
+        index = self.header.index(name)
+        values: list[float] = []
+        for row in self.rows:
+            converted = to_float(row[index])
+            if converted is not None:
+                values.append(converted)
+        return Column(name, values)
+
     def extract_numeric_columns(self, skip: list[str] = []) -> list[Column]:
         columns: list[Column] = []
         for index, name in enumerate(self.header):

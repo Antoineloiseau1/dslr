@@ -1,4 +1,6 @@
 import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from lib.toolkit import Dataset, Column
 
 STATS = [
