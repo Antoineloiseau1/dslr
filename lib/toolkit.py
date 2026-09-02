@@ -120,3 +120,36 @@ class Dataset:
                 values_a.append(converted_a)
                 values_b.append(converted_b)
         return Column(course_a, values_a), Column(course_b, values_b)
+
+
+def covariance(col_a: Column, col_b: Column) -> float:
+    mean_a = col_a.mean()
+    mean_b = col_b.mean()
+    total = 0
+    for x, y in zip(col_a.values, col_b.values):
+        total += (x - mean_a) * (y - mean_b)
+    return total / (col_a.count() - 1)
+
+
+def correlation(col_a: Column, col_b: Column) -> float:
+    return covariance(col_a, col_b) / (col_a.std() * col_b.std())
+
+
+def find_most_correlated_pair(dataset: Dataset, feature_names: list[str]):
+    best_pair = None
+    best_correlation = 0
+    best_columns = None
+
+    for i in range(len(feature_names)):
+        for j in range(i + 1, len(feature_names)):
+            feature_a = feature_names[i]
+            feature_b = feature_names[j]
+            col_a, col_b = dataset.extract_numeric_column_pair(feature_a, feature_b)
+            r = correlation(col_a, col_b)
+
+            if abs(r) > abs(best_correlation):
+                best_correlation = r
+                best_pair = (feature_a, feature_b)
+                best_columns = (col_a, col_b)
+
+    return best_pair, best_correlation, best_columns
