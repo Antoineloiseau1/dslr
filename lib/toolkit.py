@@ -103,14 +103,14 @@ class Dataset:
             if converted is not None:
                 groups.setdefault(key, []).append(converted)
         return [Column(name, values) for name, values in groups.items()]
-    
-    def extract_numeric_column_pair(self, course_a: str, course_b: str) -> tuple[Column, Column]:
-        if course_a not in self.header:
-            raise ValueError(f"{course_a} not found in dataset")
-        if course_b not in self.header:
-            raise ValueError(f"{course_b} not found in dataset")
-        index_a = self.header.index(course_a)
-        index_b = self.header.index(course_b)
+
+    def extract_numeric_column_pair(self, feature_a: str, feature_b: str) -> tuple[Column, Column]:
+        if feature_a not in self.header:
+            raise ValueError(f"{feature_a} not found in dataset")
+        if feature_b not in self.header:
+            raise ValueError(f"{feature_b} not found in dataset")
+        index_a = self.header.index(feature_a)
+        index_b = self.header.index(feature_b)
         values_a: list[float] = []
         values_b: list[float] = []
         for row in self.rows:
@@ -119,7 +119,7 @@ class Dataset:
             if converted_a is not None and converted_b is not None:
                 values_a.append(converted_a)
                 values_b.append(converted_b)
-        return Column(course_a, values_a), Column(course_b, values_b)
+        return Column(feature_a, values_a), Column(feature_b, values_b)
 
 
 def covariance(col_a: Column, col_b: Column) -> float:
@@ -151,5 +151,4 @@ def find_most_correlated_pair(dataset: Dataset, feature_names: list[str]):
                 best_correlation = r
                 best_pair = (feature_a, feature_b)
                 best_columns = (col_a, col_b)
-
     return best_pair, best_correlation, best_columns
