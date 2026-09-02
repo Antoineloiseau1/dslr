@@ -5,7 +5,6 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import matplotlib.pyplot as plt
 from lib.toolkit import Dataset
 from lib.utils import HOUSE_COLORS
-import matplotlib.pyplot as plt
 
 
 def main(argc: int, argv: list[str]):
