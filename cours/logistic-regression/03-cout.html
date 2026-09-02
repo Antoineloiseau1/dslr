@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Le coût — Ch.3 §1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <div class="toc-title">Cours — Régression logistique</div>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">01</span> Le problème</summary>
+        <ol><li><a href="01-le-probleme.html">Classer, pas prédire</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">02</span> La sigmoïde</summary>
+        <ol><li><a href="02-sigmoide.html">Transformer un score en probabilité</a></li></ol>
+      </details>
+      <details class="toc-chapter" open>
+        <summary class="toc-chapter-name"><span class="num">03</span> Le coût</summary>
+        <ol><li><a href="03-cout.html" class="current">Mesurer l'erreur du classifieur</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">04</span> Le gradient</summary>
+        <ol><li><a href="04-gradient.html">Apprendre par descente de gradient</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">05</span> Normalisation</summary>
+        <ol><li><a href="05-normalisation.html">Mettre les features à la même échelle</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">06</span> One-vs-All</summary>
+        <ol><li><a href="06-one-vs-all.html">De binaire à multiclasse</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">07</span> Le pipeline complet</summary>
+        <ol><li><a href="07-pipeline.html">De A à Z dans ton code</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">08</span> Bonus</summary>
+        <ol><li><a href="08-bonus.html">Les bonus pour aller plus loin</a></li></ol>
+      </details>
+    </aside>
+
+    <main>
+      <div class="chapter-meta">Chapitre 3 · §1</div>
+      <h1>Mesurer l'erreur du classifieur</h1>
+      <p class="lede">
+        Le modèle sort une probabilité. Les données disent « oui » ou « non ». Il faut un <strong>nombre unique</strong> qui dit à quel point le modèle se trompe. C'est l'équation la plus longue du sujet — on va la décortiquer pièce par pièce.
+      </p>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>1. L'équation du sujet</h2>
+      <p>Voici la formule telle qu'elle apparaît dans l'annexe (page 11) :</p>
+      $$J(\theta) = -\frac{1}{m} \sum_{i=1}^{m} y^i \log(h_\theta(x^i)) + (1 - y^i) \log(1 - h_\theta(x^i))$$
+      <p>
+        C'est intimidant. Mais on va voir que chaque morceau a un sens simple.
+      </p>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>2. Chaque symbole expliqué</h2>
+      <ul>
+        <li>$J$ — c'est le <strong>nom</strong> de la fonction de coût. $J(\theta)$ = « le coût quand les poids sont $\theta$ ». Plus $J$ est petit, meilleur est le modèle.</li>
+        <li>$\theta$ — les poids du modèle (ceux qu'on essaie d'optimiser).</li>
+        <li>$m$ — le <strong>nombre d'exemples</strong> dans le dataset. Pour toi, $m = 1600$ (le nombre d'élèves dans dataset_train.csv).</li>
+        <li>$\sum_{i=1}^{m}$ — le symbole <strong>somme</strong>. Ça veut dire « additionne le calcul qui suit pour chaque élève $i$, de $i = 1$ jusqu'à $i = m$ ». C'est une boucle <code>for</code> en maths.</li>
+        <li>$i$ — l'<strong>indice</strong> de l'élève. L'élève numéro 1, numéro 2, …, numéro $m$.</li>
+        <li>$y^i$ — la <strong>vraie réponse</strong> pour l'élève $i$. C'est soit $1$ (« oui, c'est cette maison ») soit $0$ (« non »). Le $i$ en exposant est un indice, pas une puissance.</li>
+        <li>$x^i$ — les <strong>notes</strong> de l'élève $i$ (son vecteur de features).</li>
+        <li>$h_\theta(x^i)$ — la <strong>prédiction</strong> du modèle pour l'élève $i$. C'est la probabilité qu'on a calculée au chapitre 2 (sigmoïde du produit scalaire). Un nombre entre 0 et 1.</li>
+        <li>$\log$ — le <strong>logarithme naturel</strong> (base $e$). En Python : <code>math.log()</code>. Propriété clé : $\log$ d'un nombre entre 0 et 1 est toujours <strong>négatif</strong>.</li>
+        <li>$-\frac{1}{m}$ — le signe moins rend le coût <strong>positif</strong> (car les logs sont négatifs), et la division par $m$ fait la <strong>moyenne</strong> sur tous les élèves.</li>
+      </ul>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>3. L'astuce des deux termes</h2>
+      <p>
+        La formule a deux morceaux additionnés. Regardons ce que chacun fait :
+      </p>
+      $$\underbrace{y^i \log(h_\theta(x^i))}_{\text{Terme A}} + \underbrace{(1 - y^i) \log(1 - h_\theta(x^i))}_{\text{Terme B}}$$
+
+      <h3>Quand $y^i = 1$ (l'élève EST dans la maison)</h3>
+      <ul>
+        <li><strong>Terme A</strong> : $1 \times \log(h) = \log(h)$ → <strong>actif</strong></li>
+        <li><strong>Terme B</strong> : $(1 - 1) \times \log(1-h) = 0 \times \ldots = 0$ → <strong>s'annule</strong></li>
+      </ul>
+      <p>Il ne reste que $\log(h)$. On mesure : « à quel point le modèle a prédit près de 1 ? »</p>
+
+      <h3>Quand $y^i = 0$ (l'élève N'EST PAS dans la maison)</h3>
+      <ul>
+        <li><strong>Terme A</strong> : $0 \times \log(h) = 0$ → <strong>s'annule</strong></li>
+        <li><strong>Terme B</strong> : $(1 - 0) \times \log(1-h) = \log(1-h)$ → <strong>actif</strong></li>
+      </ul>
+      <p>Il ne reste que $\log(1-h)$. On mesure : « à quel point le modèle a prédit près de 0 ? »</p>
+
+      <div class="pull-quote">
+        C'est un <strong>interrupteur automatique</strong>. Comme $y$ vaut toujours 0 ou 1, un des deux termes s'éteint systématiquement. Pas besoin de <code>if</code> dans le code — la formule gère les deux cas toute seule.
+      </div>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>4. Pourquoi le log ?</h2>
+      <p>
+        Le $\log$ pénalise les erreurs de manière <strong>asymétrique</strong>. Plus le modèle est sûr de lui et se trompe, plus la punition est sévère :
+      </p>
+
+      <h3>Cas $y = 1$ : le modèle devrait prédire haut</h3>
+      <table class="data">
+        <tr><th>Prédiction $h$</th><th>$\log(h)$</th><th>Coût $-\log(h)$</th><th>En mots</th></tr>
+        <tr><td>$0.99$</td><td>$-0.01$</td><td>$0.01$</td><td>Prédit bien → quasi pas puni</td></tr>
+        <tr><td>$0.8$</td><td>$-0.22$</td><td>$0.22$</td><td>Pas mal → petite punition</td></tr>
+        <tr><td>$0.5$</td><td>$-0.69$</td><td>$0.69$</td><td>Hésite → punition moyenne</td></tr>
+        <tr><td>$0.2$</td><td>$-1.61$</td><td>$1.61$</td><td>Se trompe → grosse punition</td></tr>
+        <tr><td>$0.01$</td><td>$-4.61$</td><td>$4.61$</td><td>Certain d'avoir tort → punition énorme</td></tr>
+      </table>
+      <p>Remarque : quand $h \to 0$ (le modèle est sûr que c'est « non ») alors que $y = 1$ (c'est « oui »), le coût $\to +\infty$.</p>
+
+      <h3>Cas $y = 0$ : le modèle devrait prédire bas</h3>
+      <table class="data">
+        <tr><th>Prédiction $h$</th><th>$1 - h$</th><th>$\log(1-h)$</th><th>Coût $-\log(1-h)$</th></tr>
+        <tr><td>$0.01$</td><td>$0.99$</td><td>$-0.01$</td><td>$0.01$ → quasi pas puni</td></tr>
+        <tr><td>$0.3$</td><td>$0.7$</td><td>$-0.36$</td><td>$0.36$ → punition modérée</td></tr>
+        <tr><td>$0.9$</td><td>$0.1$</td><td>$-2.30$</td><td>$2.30$ → grosse punition</td></tr>
+        <tr><td>$0.99$</td><td>$0.01$</td><td>$-4.61$</td><td>$4.61$ → punition énorme</td></tr>
+      </table>
+
+      <aside class="tangent">
+        <span class="tangent-label">Pourquoi pas juste la différence ?</span>
+        <p>
+          On pourrait se dire « je prends juste $|h - y|$ comme erreur ». Le problème : si le modèle prédit $h = 0.01$ au lieu de $y = 1$, l'erreur serait $0.99$. Mais si le modèle prédit $h = 0.4$ au lieu de $y = 1$, l'erreur serait $0.6$. La différence entre les deux punitions n'est que de $0.39$, alors que le premier cas est <em>catastrophique</em> et le deuxième juste « moyen ». Le $\log$ amplifie les erreurs graves : $-\log(0.01) = 4.61$ vs $-\log(0.4) = 0.92$ → un écart de $3.69$, beaucoup plus marqué.
+        </p>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>5. Exemple complet, pas à pas</h2>
+      <p>
+        Prenons 3 élèves et le classifieur « est-ce un Gryffindor ? » :
+      </p>
+      <table class="data" style="font-family: inherit;">
+        <tr><th>Élève</th><th>Vrai $y$</th><th>Prédit $h$</th><th>Terme actif</th><th>Calcul</th><th>Coût</th></tr>
+        <tr><td>Harry</td><td>$1$</td><td>$0.9$</td><td>$\log(h)$</td><td>$-\log(0.9) = -(-0.105)$</td><td>$0.105$</td></tr>
+        <tr><td>Draco</td><td>$0$</td><td>$0.2$</td><td>$\log(1-h)$</td><td>$-\log(0.8) = -(-0.223)$</td><td>$0.223$</td></tr>
+        <tr><td>Neville</td><td>$1$</td><td>$0.6$</td><td>$\log(h)$</td><td>$-\log(0.6) = -(-0.511)$</td><td>$0.511$</td></tr>
+      </table>
+      <p>
+        Le coût total :
+      </p>
+      $$J = -\frac{1}{3} \left[ \underbrace{1 \times \log(0.9) + 0 \times \log(0.8)}_{\text{Harry}} + \underbrace{0 \times \log(0.2) + 1 \times \log(0.8)}_{\text{Draco}} + \underbrace{1 \times \log(0.6) + 0 \times \log(0.4)}_{\text{Neville}} \right]$$
+      $$J = -\frac{1}{3} \left[ (-0.105) + (-0.223) + (-0.511) \right] = -\frac{-0.839}{3} = \frac{0.839}{3} = 0.280$$
+      <p>
+        Le coût est $0.280$. L'objectif du gradient descent : <strong>faire baisser ce nombre</strong> en ajustant les $\theta$.
+      </p>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>6. La formule = une boucle for</h2>
+      <p>
+        En Python, la formule du sujet se traduit littéralement en :
+      </p>
+      <pre class="code"><span class="kw">def</span> <span class="fn">cost</span>(theta, X, y):
+    m = len(y)                            <span class="cm"># nombre d'élèves</span>
+    total = <span class="nu">0</span>
+    <span class="kw">for</span> i <span class="kw">in</span> range(m):                    <span class="cm"># Σ de i=1 à m</span>
+        h = hypothesis(theta, X[i])       <span class="cm"># h_θ(xⁱ)</span>
+        <span class="cm"># Terme A           + Terme B</span>
+        total += y[i] * math.log(h) + (<span class="nu">1</span> - y[i]) * math.log(<span class="nu">1</span> - h)
+    <span class="kw">return</span> -total / m                     <span class="cm"># -1/m × la somme</span></pre>
+      <p>
+        Chaque ligne correspond à un morceau de la formule. La $\sum$ est la boucle <code>for</code>. Le $-\frac{1}{m}$ est le <code>return</code>.
+      </p>
+
+      <aside class="danger">
+        <span class="d-label">Piège classique</span>
+        <p>
+          $\log(0)$ vaut $-\infty$ et fera planter ton programme. Si $h = 0$ ou $h = 1$ exactement, le log explose. Solution : avant de calculer le log, clippe $h$ :
+        </p>
+        <pre class="code">h = max(<span class="nu">1e-15</span>, min(<span class="nu">1</span> - <span class="nu">1e-15</span>, h))</pre>
+        <p>Ça empêche $h$ d'être exactement 0 ou 1.</p>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>7. Visualiser le coût pendant l'entraînement</h2>
+      <p>
+        À chaque itération du gradient descent, tu calcules $J$. Il doit <strong>diminuer régulièrement</strong>. Si tu le traces :
+      </p>
+      <ul>
+        <li>Courbe qui <strong>descend et se stabilise</strong> → tout va bien, le modèle converge</li>
+        <li>Courbe qui <strong>monte</strong> → learning rate trop grand, le modèle diverge</li>
+        <li>Courbe qui <strong>descend très lentement</strong> → learning rate trop petit</li>
+        <li>Courbe qui <strong>oscille</strong> → learning rate trop grand aussi</li>
+      </ul>
+
+      <aside class="yourcode">
+        <span class="yc-label">Dans ton code</span>
+        <p>
+          Stocke $J$ dans une liste à chaque itération. Après l'entraînement, trace-la : <code>plt.plot(costs)</code>. C'est ton outil de debug numéro 1, et c'est un bonus du sujet.
+        </p>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>8. Résumé</h2>
+      <ul>
+        <li>La formule du sujet $J(\theta) = -\frac{1}{m} \sum \left[ y \log(h) + (1-y) \log(1-h) \right]$ mesure l'erreur moyenne</li>
+        <li>$y$ vaut 0 ou 1 → un seul des deux termes est actif à chaque fois</li>
+        <li>Le $\log$ punit <strong>exponentiellement</strong> les certitudes erronées</li>
+        <li>$-\frac{1}{m}$ donne la moyenne et rend le résultat positif</li>
+        <li>En code : une boucle <code>for</code> sur les élèves, qui additionne les coûts individuels</li>
+        <li>Un $J$ qui baisse = le modèle apprend. Un $J$ qui monte = problème de learning rate.</li>
+      </ul>
+
+      <h2>9. Pour aller plus loin — vidéos</h2>
+      <ul>
+        <li><a href="https://www.youtube.com/watch?v=yIYKR4sgzI8&t=420" target="_blank">StatQuest: Logistic Regression — la partie maximum likelihood</a> (EN)</li>
+        <li><a href="https://www.youtube.com/watch?v=uCjpCAb7zI8" target="_blank">Régression logistique binaire</a> — explication mathématique en français (FR)</li>
+      </ul>
+
+      <nav class="chapter-nav">
+        <a class="prev" href="02-sigmoide.html">
+          <span class="nav-label">← Précédent</span>
+          <span class="nav-title">Transformer un score en probabilité</span>
+        </a>
+        <a class="next" href="04-gradient.html">
+          <span class="nav-label">Suivant →</span>
+          <span class="nav-title">Apprendre par descente de gradient</span>
+        </a>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>

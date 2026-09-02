@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Normalisation — Ch.5 §1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <div class="toc-title">Cours — Régression logistique</div>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">01</span> Le problème</summary>
+        <ol><li><a href="01-le-probleme.html">Classer, pas prédire</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">02</span> La sigmoïde</summary>
+        <ol><li><a href="02-sigmoide.html">Transformer un score en probabilité</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">03</span> Le coût</summary>
+        <ol><li><a href="03-cout.html">Mesurer l'erreur du classifieur</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">04</span> Le gradient</summary>
+        <ol><li><a href="04-gradient.html">Apprendre par descente de gradient</a></li></ol>
+      </details>
+      <details class="toc-chapter" open>
+        <summary class="toc-chapter-name"><span class="num">05</span> Normalisation</summary>
+        <ol><li><a href="05-normalisation.html" class="current">Mettre les features à la même échelle</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">06</span> One-vs-All</summary>
+        <ol><li><a href="06-one-vs-all.html">De binaire à multiclasse</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">07</span> Le pipeline complet</summary>
+        <ol><li><a href="07-pipeline.html">De A à Z dans ton code</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">08</span> Bonus</summary>
+        <ol><li><a href="08-bonus.html">Les bonus pour aller plus loin</a></li></ol>
+      </details>
+    </aside>
+
+    <main>
+      <div class="chapter-meta">Chapitre 5 · §1</div>
+      <h1>Mettre les features à la même échelle</h1>
+      <p class="lede">
+        Tes features ont des échelles très différentes : Astronomy va de $-1000$ à $+1000$, Potions de $-19$ à $+21$. Si tu lances le gradient descent sans normaliser, certains poids vont bouger mille fois plus vite que d'autres. Le modèle va <strong>diverger ou converger très lentement</strong>.
+      </p>
+
+      <h2>1. Le problème des échelles</h2>
+      <p>
+        Le gradient pour $\theta_j$ est proportionnel à $x_j$ (la feature $j$). Si Astronomy vaut $800$ et Potions vaut $3$, le gradient de $\theta_{\text{Astro}}$ sera ~$267\times$ plus grand que celui de $\theta_{\text{Potions}}$. Avec le même learning rate $\alpha$, le poids d'Astronomy fait d'énormes bonds tandis que celui de Potions rampe.
+      </p>
+      <p>
+        Résultat : le gradient descent zigzague au lieu de descendre droit, ou pire, il diverge.
+      </p>
+
+      <h2>2. La standardisation (Z-score)</h2>
+      <p>
+        La solution la plus courante est la <strong>standardisation</strong>. Pour chaque feature $j$, on transforme les valeurs pour qu'elles aient une moyenne de 0 et un écart-type de 1 :
+      </p>
+      $$x_j' = \frac{x_j - \mu_j}{\sigma_j}$$
+      <p>
+        Où :
+      </p>
+      <ul>
+        <li>$\mu_j$ = la moyenne de la feature $j$ sur le dataset d'entraînement</li>
+        <li>$\sigma_j$ = l'écart-type de la feature $j$ sur le dataset d'entraînement</li>
+      </ul>
+      <p>
+        Après standardisation, toutes les features sont centrées autour de 0 et ont la même dispersion. Le gradient descent converge beaucoup plus vite.
+      </p>
+
+      <aside class="tangent">
+        <span class="tangent-label">Min-Max vs Z-score</span>
+        <p>
+          L'alternative est la normalisation min-max : $x' = \frac{x - \min}{\max - \min}$, qui met tout entre 0 et 1. Les deux marchent. La standardisation est préférée en logistique parce qu'elle gère mieux les outliers et centre les données autour de 0 (ce qui aide la sigmoïde).
+        </p>
+      </aside>
+
+      <h2>3. Exemple concret</h2>
+      <table class="data">
+        <tr><th>Élève</th><th>Astronomy (brut)</th><th>Astronomy (standardisé)</th></tr>
+        <tr><td>Harry</td><td>$-487.0$</td><td>$-0.73$</td></tr>
+        <tr><td>Draco</td><td>$260.5$</td><td>$0.88$</td></tr>
+        <tr><td>Luna</td><td>$-22.3$</td><td>$0.27$</td></tr>
+      </table>
+      <p>
+        Si $\mu = -150$ et $\sigma = 460$, alors pour Harry : $\frac{-487 - (-150)}{460} = \frac{-337}{460} = -0.73$.
+      </p>
+      <p>
+        Maintenant Astronomy et Potions sont sur la même échelle (autour de $[-2, +2]$ typiquement), et leurs gradients auront des magnitudes comparables.
+      </p>
+
+      <h2>4. Attention : sauvegarder $\mu$ et $\sigma$</h2>
+      <p>
+        C'est un point <strong>crucial</strong>. Tu calcules $\mu$ et $\sigma$ sur le <strong>dataset d'entraînement</strong>. Mais quand tu prédis sur le dataset de test, tu dois utiliser <strong>les mêmes</strong> $\mu$ et $\sigma$, pas ceux du test.
+      </p>
+
+      <div class="pull-quote">
+        Les paramètres de normalisation ($\mu$, $\sigma$) font partie du modèle. Ils doivent être sauvegardés avec les poids $\theta$.
+      </div>
+
+      <p>
+        Sinon, les données du test seront à une échelle différente de celles de l'entraînement, et les poids $\theta$ (qui ont été appris sur des données standardisées) ne fonctionneront pas.
+      </p>
+
+      <aside class="yourcode">
+        <span class="yc-label">Dans ton code</span>
+        <p>
+          <code>logreg_train.py</code> calcule $\mu$ et $\sigma$ pour chaque feature et les sauvegarde dans le fichier de poids (avec les $\theta$).<br>
+          <code>logreg_predict.py</code> les recharge et les applique au dataset de test avant de prédire.
+        </p>
+      </aside>
+
+      <h2>5. En Python</h2>
+      <pre class="code"><span class="cm"># Standardiser une liste de valeurs</span>
+<span class="kw">def</span> <span class="fn">standardize</span>(values):
+    mu = mean(values)
+    sigma = std(values)
+    <span class="kw">return</span> [(v - mu) / sigma <span class="kw">for</span> v <span class="kw">in</span> values], mu, sigma
+
+<span class="cm"># Appliquer la standardisation avec des paramètres connus</span>
+<span class="kw">def</span> <span class="fn">apply_standardize</span>(values, mu, sigma):
+    <span class="kw">return</span> [(v - mu) / sigma <span class="kw">for</span> v <span class="kw">in</span> values]</pre>
+
+      <aside class="danger">
+        <span class="d-label">Piège classique</span>
+        <p>
+          Si une feature a un écart-type de 0 (toutes les valeurs sont identiques), tu divises par 0. Solution : soit ignorer cette feature (elle n'apporte aucune information), soit remplacer $\sigma = 0$ par $\sigma = 1$ pour éviter la division par zéro.
+        </p>
+      </aside>
+
+      <h2>6. Gérer les valeurs manquantes</h2>
+      <p>
+        Ton dataset contient des cases vides (NaN). Avant de normaliser, tu dois les gérer. Deux stratégies simples :
+      </p>
+      <ul>
+        <li><strong>Imputation par la moyenne</strong> — remplacer les NaN par $\mu_j$ de la feature. Après standardisation, ces valeurs deviennent 0 (neutre). C'est simple et efficace.</li>
+        <li><strong>Imputation par la médiane</strong> — plus robuste aux outliers. Mêmes avantages.</li>
+      </ul>
+      <p>
+        Pour le projet, l'imputation par la moyenne suffit largement pour atteindre 98%.
+      </p>
+
+      <h2>7. Résumé</h2>
+      <ul>
+        <li><strong>Standardiser</strong> chaque feature : $x' = \frac{x - \mu}{\sigma}$</li>
+        <li>Calculer $\mu$ et $\sigma$ sur le <strong>train set uniquement</strong></li>
+        <li><strong>Sauvegarder</strong> $\mu$ et $\sigma$ avec les poids</li>
+        <li>Appliquer la même transformation au test set avec les mêmes paramètres</li>
+        <li>Remplacer les NaN par la moyenne avant de standardiser</li>
+      </ul>
+
+      <nav class="chapter-nav">
+        <a class="prev" href="04-gradient.html">
+          <span class="nav-label">← Précédent</span>
+          <span class="nav-title">Apprendre par descente de gradient</span>
+        </a>
+        <a class="next" href="06-one-vs-all.html">
+          <span class="nav-label">Suivant →</span>
+          <span class="nav-title">De binaire à multiclasse</span>
+        </a>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>
