@@ -103,4 +103,20 @@ class Dataset:
             if converted is not None:
                 groups.setdefault(key, []).append(converted)
         return [Column(name, values) for name, values in groups.items()]
-             
+    
+    def extract_numeric_column_pair(self, course_a: str, course_b: str) -> tuple[Column, Column]:
+        if course_a not in self.header:
+            raise ValueError(f"{course_a} not found in dataset")
+        if course_b not in self.header:
+            raise ValueError(f"{course_b} not found in dataset")
+        index_a = self.header.index(course_a)
+        index_b = self.header.index(course_b)
+        values_a: list[float] = []
+        values_b: list[float] = []
+        for row in self.rows:
+            converted_a = to_float(row[index_a])
+            converted_b = to_float(row[index_b])
+            if converted_a is not None and converted_b is not None:
+                values_a.append(converted_a)
+                values_b.append(converted_b)
+        return Column(course_a, values_a), Column(course_b, values_b)
