@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La sigmoïde — Ch.2 §1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <div class="toc-title">Cours — Régression logistique</div>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">01</span> Le problème</summary>
+        <ol><li><a href="01-le-probleme.html">Classer, pas prédire</a></li></ol>
+      </details>
+      <details class="toc-chapter" open>
+        <summary class="toc-chapter-name"><span class="num">02</span> La sigmoïde</summary>
+        <ol><li><a href="02-sigmoide.html" class="current">Transformer un score en probabilité</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">03</span> Le coût</summary>
+        <ol><li><a href="03-cout.html">Mesurer l'erreur du classifieur</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">04</span> Le gradient</summary>
+        <ol><li><a href="04-gradient.html">Apprendre par descente de gradient</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">05</span> Normalisation</summary>
+        <ol><li><a href="05-normalisation.html">Mettre les features à la même échelle</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">06</span> One-vs-All</summary>
+        <ol><li><a href="06-one-vs-all.html">De binaire à multiclasse</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">07</span> Le pipeline complet</summary>
+        <ol><li><a href="07-pipeline.html">De A à Z dans ton code</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">08</span> Bonus</summary>
+        <ol><li><a href="08-bonus.html">Les bonus pour aller plus loin</a></li></ol>
+      </details>
+    </aside>
+
+    <main>
+      <div class="chapter-meta">Chapitre 2 · §1</div>
+      <h1>Transformer un score en probabilité</h1>
+      <p class="lede">
+        Le sujet donne deux formules liées. On va les décortiquer symbole par symbole, en commençant par la plus simple : la <strong>sigmoïde</strong>.
+      </p>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>1. Équation du sujet : $g(z) = \frac{1}{1 + e^{-z}}$</h2>
+      <p>
+        C'est la première formule de l'annexe (page 11). On va la lire morceau par morceau.
+      </p>
+
+      <h3>Chaque symbole expliqué</h3>
+      <ul>
+        <li>$g$ — c'est juste le <strong>nom</strong> de la fonction. On l'appelle $g$ (ou parfois $\sigma$). C'est la sigmoïde.</li>
+        <li>$z$ — c'est l'<strong>entrée</strong> de la fonction. Un nombre quelconque : $-50$, $0$, $3.7$, $1000$… n'importe quoi.</li>
+        <li>$e$ — c'est le <strong>nombre d'Euler</strong>, une constante mathématique ≈ $2.71828$. C'est comme $\pi$, mais pour les exponentielles. En Python : <code>math.exp()</code>.</li>
+        <li>$e^{-z}$ — c'est $e$ élevé à la puissance $-z$. Si $z = 2$, alors $e^{-z} = e^{-2} \approx 0.135$. Si $z = -3$, alors $e^{-z} = e^{3} \approx 20.09$.</li>
+        <li>$1 + e^{-z}$ — on ajoute 1 au résultat. C'est toujours un nombre $> 1$.</li>
+        <li>$\frac{1}{1 + e^{-z}}$ — on divise 1 par ce résultat. Comme le dénominateur est toujours $> 1$, le résultat est toujours $< 1$. Et comme $e^{-z}$ est toujours positif, le dénominateur est toujours $> 0$, donc le résultat est toujours $> 0$.</li>
+      </ul>
+
+      <div class="pull-quote">
+        <strong>Conclusion</strong> : peu importe la valeur de $z$, la sortie de $g(z)$ est <strong>toujours entre 0 et 1</strong>. C'est ça qui en fait une probabilité.
+      </div>
+
+      <h3>Calculons à la main</h3>
+      <p>
+        Prenons $z = 2$ :
+      </p>
+      <ol>
+        <li>$-z = -2$</li>
+        <li>$e^{-2} = \frac{1}{e^2} \approx \frac{1}{7.389} \approx 0.135$</li>
+        <li>$1 + 0.135 = 1.135$</li>
+        <li>$\frac{1}{1.135} \approx 0.881$</li>
+      </ol>
+      <p>Donc $g(2) \approx 0.88$. Le modèle est à 88% sûr que c'est « oui ».</p>
+
+      <p>
+        Prenons $z = -3$ :
+      </p>
+      <ol>
+        <li>$-z = 3$</li>
+        <li>$e^{3} \approx 20.09$</li>
+        <li>$1 + 20.09 = 21.09$</li>
+        <li>$\frac{1}{21.09} \approx 0.047$</li>
+      </ol>
+      <p>Donc $g(-3) \approx 0.05$. Le modèle est à 5% → « probablement non ».</p>
+
+      <p>
+        Prenons $z = 0$ :
+      </p>
+      <ol>
+        <li>$-z = 0$</li>
+        <li>$e^{0} = 1$ (n'importe quoi élevé à la puissance 0 vaut 1)</li>
+        <li>$1 + 1 = 2$</li>
+        <li>$\frac{1}{2} = 0.5$</li>
+      </ol>
+      <p>Donc $g(0) = 0.5$. Pile au milieu : le modèle hésite complètement.</p>
+
+      <table class="data">
+        <tr><th>$z$</th><th>Calcul détaillé</th><th>$g(z)$</th><th>En mots</th></tr>
+        <tr><td>$-10$</td><td>$\frac{1}{1 + e^{10}} = \frac{1}{1 + 22026}$</td><td>$\approx 0.00005$</td><td>« Certainement non »</td></tr>
+        <tr><td>$-2$</td><td>$\frac{1}{1 + e^{2}} = \frac{1}{1 + 7.39}$</td><td>$\approx 0.12$</td><td>« Probablement non »</td></tr>
+        <tr><td>$0$</td><td>$\frac{1}{1 + e^{0}} = \frac{1}{1 + 1}$</td><td>$= 0.5$</td><td>« Je sais pas »</td></tr>
+        <tr><td>$2$</td><td>$\frac{1}{1 + e^{-2}} = \frac{1}{1 + 0.14}$</td><td>$\approx 0.88$</td><td>« Probablement oui »</td></tr>
+        <tr><td>$10$</td><td>$\frac{1}{1 + e^{-10}} = \frac{1}{1 + 0.00005}$</td><td>$\approx 0.99995$</td><td>« Certainement oui »</td></tr>
+      </table>
+
+      <aside class="tangent">
+        <span class="tangent-label">Intuition</span>
+        <p>
+          La sigmoïde est un <strong>traducteur</strong>. Elle prend un score brut (n'importe quel nombre réel) et le transforme en probabilité (entre 0 et 1). Un score très positif → « oui ». Un score très négatif → « non ». Un score autour de 0 → « je sais pas ».
+        </p>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>2. Équation du sujet : $h_\theta(x) = g(\theta^T x)$</h2>
+      <p>
+        C'est la deuxième formule de l'annexe. Elle utilise la sigmoïde $g$ qu'on vient de voir. On va décomposer.
+      </p>
+
+      <h3>Chaque symbole expliqué</h3>
+      <ul>
+        <li>$h$ — c'est l'<strong>hypothèse</strong>, la fonction qui fait la prédiction. Elle prend un élève en entrée et sort une probabilité.</li>
+        <li>$\theta$ — (prononcé « thêta ») ce sont les <strong>poids</strong> du modèle. C'est ce que le modèle apprend. C'est une liste de nombres : $[\theta_0, \theta_1, \theta_2, \ldots, \theta_n]$.</li>
+        <li>$h_\theta$ — « l'hypothèse avec les poids $\theta$ ». Le petit $\theta$ en indice rappelle que la prédiction dépend des poids qu'on a choisis.</li>
+        <li>$x$ — c'est un <strong>élève</strong>, représenté par ses notes : $[x_1, x_2, \ldots, x_n]$. Par exemple, $x_1$ = sa note en Astronomy, $x_2$ = sa note en Herbology, etc.</li>
+        <li>$\theta^T$ — le $T$ veut dire <strong>transposé</strong>. En pratique, ça permet de faire le produit scalaire. Si tu connais pas la transposée, ignore le $T$ : retiens juste que $\theta^T x$ est le produit scalaire.</li>
+        <li>$\theta^T x$ — le <strong>produit scalaire</strong> entre $\theta$ et $x$. C'est une multiplication terme à terme, puis une somme.</li>
+        <li>$g(\theta^T x)$ — on passe le résultat du produit scalaire dans la sigmoïde.</li>
+      </ul>
+
+      <h3>Le produit scalaire : c'est quoi concrètement ?</h3>
+      <p>
+        Imaginons un modèle simple avec seulement 3 features. Le modèle a 4 poids (un biais + un par feature) :
+      </p>
+      $$\theta = [\theta_0, \theta_1, \theta_2, \theta_3] = [0.5,\; -0.3,\; 1.2,\; 0.8]$$
+      <p>
+        Et un élève avec ses notes (on ajoute un $1$ au début pour le biais) :
+      </p>
+      $$x = [1,\; x_1,\; x_2,\; x_3] = [1,\; 0.7,\; -1.5,\; 2.1]$$
+      <p>
+        Le produit scalaire $\theta^T x$ c'est :
+      </p>
+      $$\theta^T x = \theta_0 \times 1 + \theta_1 \times x_1 + \theta_2 \times x_2 + \theta_3 \times x_3$$
+      $$= 0.5 \times 1 + (-0.3) \times 0.7 + 1.2 \times (-1.5) + 0.8 \times 2.1$$
+      $$= 0.5 - 0.21 - 1.8 + 1.68 = 0.17$$
+      <p>
+        On obtient $z = 0.17$. Maintenant on passe dans la sigmoïde :
+      </p>
+      $$h_\theta(x) = g(0.17) = \frac{1}{1 + e^{-0.17}} = \frac{1}{1 + 0.844} = \frac{1}{1.844} \approx 0.542$$
+      <p>
+        Le modèle donne <strong>54.2%</strong> de chances que cet élève soit dans la classe « oui ». C'est quasi 50/50, il hésite.
+      </p>
+
+      <div class="pull-quote">
+        Le produit scalaire $\theta^T x$ c'est juste <strong>multiplier chaque poids par la note correspondante, puis tout additionner</strong>. C'est une somme pondérée.
+      </div>
+
+      <h3>Ce que chaque poids signifie</h3>
+      <ul>
+        <li>$\theta_0 = 0.5$ — le <strong>biais</strong>. C'est le score de base, avant même de regarder les notes. Un biais positif = le modèle est déjà un peu penché vers « oui ».</li>
+        <li>$\theta_1 = -0.3$ — poids de la feature 1 (ex: Astronomy). Négatif → une bonne note en Astronomy <em>réduit</em> la probabilité de cette maison.</li>
+        <li>$\theta_2 = 1.2$ — poids de la feature 2 (ex: Herbology). Positif et grand → une bonne note en Herbology <em>augmente fortement</em> la probabilité.</li>
+        <li>$\theta_3 = 0.8$ — poids de la feature 3 (ex: Divination). Positif → une bonne note pousse vers « oui ».</li>
+      </ul>
+      <p>
+        Au début, tous les poids sont à 0. Le modèle ne sait rien. Le gradient descent va les ajuster petit à petit pour que les prédictions collent aux données.
+      </p>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>3. L'astuce de la colonne de 1</h2>
+      <p>
+        Tu as vu qu'on ajoute un $1$ au début de $x$. Pourquoi ? Pour que le biais $\theta_0$ soit inclus automatiquement dans le produit scalaire, sans cas spécial dans le code :
+      </p>
+      $$x = \begin{bmatrix} 1 \\ x_1 \\ x_2 \\ \vdots \\ x_n \end{bmatrix}, \quad \theta = \begin{bmatrix} \theta_0 \\ \theta_1 \\ \theta_2 \\ \vdots \\ \theta_n \end{bmatrix}$$
+      $$\theta^T x = \underbrace{\theta_0 \times 1}_{\text{biais}} + \underbrace{\theta_1 x_1 + \theta_2 x_2 + \ldots + \theta_n x_n}_{\text{somme pondérée des notes}}$$
+
+      <aside class="yourcode">
+        <span class="yc-label">Dans ton code</span>
+        <p>
+          Concrètement : tu as 1600 élèves et 11 features (notes). Tu ajoutes un <code>1</code> au début de chaque ligne. Ta matrice passe de $(1600 \times 11)$ à $(1600 \times 12)$. Le vecteur $\theta$ aura donc 12 éléments : 1 biais + 11 poids.
+        </p>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>4. En Python</h2>
+      <p>
+        La sigmoïde se code en une seule fonction :
+      </p>
+      <pre class="code"><span class="kw">import</span> math
+
+<span class="kw">def</span> <span class="fn">sigmoid</span>(z):
+    <span class="kw">return</span> <span class="nu">1</span> / (<span class="nu">1</span> + math.exp(-z))</pre>
+      <p>
+        Et le produit scalaire + sigmoïde (l'hypothèse) :
+      </p>
+      <pre class="code"><span class="kw">def</span> <span class="fn">hypothesis</span>(theta, x):
+    <span class="cm"># Produit scalaire : θ₀×1 + θ₁×x₁ + θ₂×x₂ + ...</span>
+    z = <span class="nu">0</span>
+    <span class="kw">for</span> j <span class="kw">in</span> range(len(theta)):
+        z += theta[j] * x[j]
+    <span class="cm"># Passer dans la sigmoïde</span>
+    <span class="kw">return</span> sigmoid(z)</pre>
+      <p>
+        C'est tout. C'est ça, $h_\theta(x) = g(\theta^T x)$.
+      </p>
+
+      <aside class="danger">
+        <span class="d-label">Piège classique</span>
+        <p>
+          Quand $z$ est très négatif (ex: $z = -800$), <code>math.exp(800)</code> dépasse la capacité d'un float → <strong>overflow</strong>. Solution au chapitre 7 (pipeline) : une version numériquement stable de la sigmoïde.
+        </p>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>5. Récapitulatif visuel</h2>
+      <p>
+        Voici le chemin complet d'une prédiction, étape par étape :
+      </p>
+      <pre class="code"><span class="cm">Notes de l'élève :     x = [1, 0.7, -1.5, 2.1]</span>
+<span class="cm">Poids du modèle :      θ = [0.5, -0.3, 1.2, 0.8]</span>
+<span class="cm"></span>
+<span class="cm">Étape 1 — Produit scalaire (θᵀx) :</span>
+<span class="cm">   0.5×1 + (-0.3)×0.7 + 1.2×(-1.5) + 0.8×2.1</span>
+<span class="cm">   = 0.5 - 0.21 - 1.8 + 1.68</span>
+<span class="cm">   = 0.17           ← c'est z, le "score brut"</span>
+<span class="cm"></span>
+<span class="cm">Étape 2 — Sigmoïde g(z) :</span>
+<span class="cm">   g(0.17) = 1 / (1 + e⁻⁰·¹⁷)</span>
+<span class="cm">          = 1 / (1 + 0.844)</span>
+<span class="cm">          = 1 / 1.844</span>
+<span class="cm">          = 0.542       ← c'est la probabilité</span>
+<span class="cm"></span>
+<span class="cm">Résultat : 54.2% de chances → le modèle hésite</span></pre>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>6. Résumé</h2>
+      <ul>
+        <li>$g(z) = \frac{1}{1 + e^{-z}}$ prend n'importe quel nombre → sort un nombre entre 0 et 1</li>
+        <li>$\theta^T x = \theta_0 + \theta_1 x_1 + \theta_2 x_2 + \ldots$ = somme pondérée des notes</li>
+        <li>$h_\theta(x) = g(\theta^T x)$ = on passe cette somme dans la sigmoïde → probabilité</li>
+        <li>Les poids $\theta$ sont ce que le modèle apprend. Au début tout est à 0.</li>
+      </ul>
+      <p>
+        Maintenant qu'on sait calculer une probabilité, il faut un moyen de mesurer <em>à quel point cette probabilité est fausse</em>. C'est le rôle de la <strong>fonction de coût</strong>.
+      </p>
+
+      <h2>7. Pour aller plus loin — vidéos</h2>
+      <ul>
+        <li><a href="https://www.youtube.com/watch?v=yIYKR4sgzI8" target="_blank">StatQuest: Logistic Regression</a> — explication visuelle et intuitive (EN)</li>
+        <li><a href="https://www.youtube.com/watch?v=pZxtGLvVoWY" target="_blank">Régression logistique</a> — explication en français (FR)</li>
+      </ul>
+
+      <nav class="chapter-nav">
+        <a class="prev" href="01-le-probleme.html">
+          <span class="nav-label">← Précédent</span>
+          <span class="nav-title">Classer, pas prédire</span>
+        </a>
+        <a class="next" href="03-cout.html">
+          <span class="nav-label">Suivant →</span>
+          <span class="nav-title">Mesurer l'erreur du classifieur</span>
+        </a>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>

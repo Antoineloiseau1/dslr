@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Le pipeline — Ch.7 §1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <div class="toc-title">Cours — Régression logistique</div>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">01</span> Le problème</summary>
+        <ol><li><a href="01-le-probleme.html">Classer, pas prédire</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">02</span> La sigmoïde</summary>
+        <ol><li><a href="02-sigmoide.html">Transformer un score en probabilité</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">03</span> Le coût</summary>
+        <ol><li><a href="03-cout.html">Mesurer l'erreur du classifieur</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">04</span> Le gradient</summary>
+        <ol><li><a href="04-gradient.html">Apprendre par descente de gradient</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">05</span> Normalisation</summary>
+        <ol><li><a href="05-normalisation.html">Mettre les features à la même échelle</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">06</span> One-vs-All</summary>
+        <ol><li><a href="06-one-vs-all.html">De binaire à multiclasse</a></li></ol>
+      </details>
+      <details class="toc-chapter" open>
+        <summary class="toc-chapter-name"><span class="num">07</span> Le pipeline complet</summary>
+        <ol><li><a href="07-pipeline.html" class="current">De A à Z dans ton code</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">08</span> Bonus</summary>
+        <ol><li><a href="08-bonus.html">Les bonus pour aller plus loin</a></li></ol>
+      </details>
+    </aside>
+
+    <main>
+      <div class="chapter-meta">Chapitre 7 · §1</div>
+      <h1>De A à Z dans ton code</h1>
+      <p class="lede">
+        Tu connais maintenant tous les ingrédients. Ce chapitre les assemble en un pipeline complet — le squelette de tes deux programmes <code>logreg_train.py</code> et <code>logreg_predict.py</code>.
+      </p>
+
+      <h2>1. logreg_train.py — vue d'ensemble</h2>
+      <p>
+        Voici les étapes dans l'ordre :
+      </p>
+      <ol>
+        <li><strong>Charger</strong> le CSV → extraire les features numériques et les labels</li>
+        <li><strong>Sélectionner</strong> les features utiles (exclure Arithmancy, Care of Magical Creatures)</li>
+        <li><strong>Gérer les NaN</strong> → remplacer par la moyenne de la feature</li>
+        <li><strong>Standardiser</strong> chaque feature → sauvegarder $\mu$ et $\sigma$</li>
+        <li><strong>Ajouter la colonne de 1</strong> (biais) au début de la matrice</li>
+        <li><strong>Pour chaque maison</strong> : transformer les labels en binaire → gradient descent → stocker $\theta$</li>
+        <li><strong>Sauvegarder</strong> tous les $\theta$ + les $\mu$/$\sigma$ dans un fichier</li>
+      </ol>
+
+      <h2>2. Préparer les données</h2>
+      <pre class="code"><span class="cm"># Étapes 1 à 5</span>
+dataset = Dataset.from_csv(argv[<span class="nu">1</span>])
+
+<span class="cm"># Features à utiliser</span>
+features = [<span class="st">"Astronomy"</span>, <span class="st">"Herbology"</span>, <span class="st">"Defense Against the Dark Arts"</span>,
+            <span class="st">"Divination"</span>, <span class="st">"Muggle Studies"</span>, <span class="st">"Ancient Runes"</span>,
+            <span class="st">"History of Magic"</span>, <span class="st">"Transfiguration"</span>, <span class="st">"Charms"</span>,
+            <span class="st">"Flying"</span>, <span class="st">"Potions"</span>]
+
+<span class="cm"># Extraire les valeurs, gérer les NaN, standardiser</span>
+<span class="cm"># → tu obtiens une matrice X (m × n) et un vecteur labels</span>
+
+<span class="cm"># Ajouter la colonne de 1 pour le biais</span>
+<span class="cm"># X[i] = [1, x1, x2, ..., xn] pour chaque élève i</span></pre>
+
+      <aside class="danger">
+        <span class="d-label">Piège classique — les NaN</span>
+        <p>
+          Les NaN doivent être gérés <strong>avant</strong> la standardisation. Si tu calcules la moyenne ou l'écart-type sur des données avec des NaN, le résultat sera NaN et tout s'effondre. Remplace les NaN d'abord, puis standardise.
+        </p>
+      </aside>
+
+      <h2>3. La boucle d'entraînement</h2>
+      <pre class="code">houses = [<span class="st">"Gryffindor"</span>, <span class="st">"Slytherin"</span>, <span class="st">"Ravenclaw"</span>, <span class="st">"Hufflepuff"</span>]
+all_thetas = {}
+
+<span class="kw">for</span> house <span class="kw">in</span> houses:
+    <span class="cm"># Labels binaires</span>
+    y = [<span class="nu">1</span> <span class="kw">if</span> label == house <span class="kw">else</span> <span class="nu">0</span> <span class="kw">for</span> label <span class="kw">in</span> labels]
+
+    <span class="cm"># Initialiser les poids à 0</span>
+    theta = [<span class="nu">0.0</span>] * (n + <span class="nu">1</span>)  <span class="cm"># n features + 1 biais</span>
+
+    <span class="cm"># Gradient descent</span>
+    <span class="kw">for</span> iteration <span class="kw">in</span> range(iterations):
+        gradients = [<span class="nu">0.0</span>] * (n + <span class="nu">1</span>)
+        <span class="kw">for</span> i <span class="kw">in</span> range(m):
+            h = sigmoid(dot(theta, X[i]))
+            error = h - y[i]
+            <span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+                gradients[j] += error * X[i][j]
+        <span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+            gradients[j] /= m
+            theta[j] -= alpha * gradients[j]
+
+    all_thetas[house] = theta</pre>
+
+      <h2>4. La sigmoïde numériquement stable</h2>
+      <p>
+        Quand $z$ est très négatif, $e^{-z}$ explose. Voici la version robuste :
+      </p>
+      <pre class="code"><span class="kw">def</span> <span class="fn">sigmoid</span>(z):
+    <span class="kw">if</span> z >= <span class="nu">0</span>:
+        <span class="kw">return</span> <span class="nu">1</span> / (<span class="nu">1</span> + math.exp(-z))
+    <span class="kw">else</span>:
+        ez = math.exp(z)
+        <span class="kw">return</span> ez / (<span class="nu">1</span> + ez)</pre>
+      <p>
+        Quand $z \geq 0$, on utilise la formule classique. Quand $z < 0$, on utilise la forme équivalente $\frac{e^z}{1 + e^z}$ qui évite de calculer $e^{800}$.
+      </p>
+
+      <h2>5. Sauvegarder les poids</h2>
+      <p>
+        Tu dois sauvegarder dans un fichier :
+      </p>
+      <ul>
+        <li>Les noms des features utilisées</li>
+        <li>Les $\mu$ et $\sigma$ de chaque feature (pour la normalisation)</li>
+        <li>Les 4 vecteurs $\theta$ (un par maison)</li>
+      </ul>
+      <p>
+        Le format est libre — CSV, JSON, etc. Un CSV simple avec une ligne par maison fonctionne bien.
+      </p>
+
+      <aside class="yourcode">
+        <span class="yc-label">Dans ton code</span>
+        <p>
+          Une approche simple : un fichier CSV où chaque ligne contient le nom de la maison suivi des poids $\theta_0, \theta_1, \ldots, \theta_n$. Et un deuxième fichier (ou des lignes supplémentaires) pour les $\mu$ et $\sigma$.
+        </p>
+      </aside>
+
+      <h2>6. logreg_predict.py — vue d'ensemble</h2>
+      <ol>
+        <li><strong>Charger</strong> le dataset de test et le fichier de poids</li>
+        <li><strong>Extraire</strong> les mêmes features que l'entraînement</li>
+        <li><strong>Gérer les NaN</strong> → imputer par la moyenne <strong>du train</strong> (sauvegardée dans $\mu$)</li>
+        <li><strong>Standardiser</strong> avec les $\mu$ et $\sigma$ <strong>du train</strong></li>
+        <li><strong>Ajouter la colonne de 1</strong></li>
+        <li>Pour chaque élève → calculer les 4 probabilités → prendre le <strong>max</strong></li>
+        <li><strong>Écrire</strong> <code>houses.csv</code></li>
+      </ol>
+
+      <pre class="code"><span class="cm"># Pour chaque élève du test</span>
+<span class="kw">for</span> i <span class="kw">in</span> range(m_test):
+    best_house = <span class="kw">None</span>
+    best_prob = -<span class="nu">1</span>
+    <span class="kw">for</span> house <span class="kw">in</span> houses:
+        prob = sigmoid(dot(all_thetas[house], X_test[i]))
+        <span class="kw">if</span> prob > best_prob:
+            best_prob = prob
+            best_house = house
+    predictions.append(best_house)</pre>
+
+      <h2>7. Vérifier l'accuracy</h2>
+      <p>
+        Le sujet dit ≥ 98%. Pour vérifier, tu peux utiliser le fichier <code>dataset_truth.csv</code> (s'il est fourni) ou faire une validation croisée sur le train set. La méthode la plus simple :
+      </p>
+      <pre class="code"><span class="cm"># Comparer avec les vraies réponses</span>
+correct = <span class="nu">0</span>
+<span class="kw">for</span> pred, true <span class="kw">in</span> zip(predictions, truth):
+    <span class="kw">if</span> pred == true:
+        correct += <span class="nu">1</span>
+accuracy = correct / len(truth)
+print(<span class="st">f"Accuracy: </span>{accuracy * <span class="nu">100</span>:.2f}<span class="st">%"</span>)</pre>
+
+      <h2>8. Checklist avant de coder</h2>
+      <ul class="checklist">
+        <li>sigmoid(z) — version numériquement stable</li>
+        <li>hypothesis(theta, x) — produit scalaire + sigmoïde</li>
+        <li>cost(theta, X, y) — binary cross-entropy</li>
+        <li>gradient_descent(X, y, alpha, iterations) — retourne theta</li>
+        <li>standardize(feature) — retourne valeurs normalisées + mu + sigma</li>
+        <li>Imputation des NaN avant standardisation</li>
+        <li>Colonne de 1 ajoutée à X</li>
+        <li>Boucle One-vs-All : 4 entraînements</li>
+        <li>Sauvegarde des poids + mu/sigma</li>
+        <li>Prédiction : argmax des 4 probabilités</li>
+        <li>Écriture de houses.csv au bon format</li>
+      </ul>
+
+      <h2>9. Résumé</h2>
+      <p>
+        Tout le projet tient dans cette séquence : <strong>charger → nettoyer → normaliser → entraîner 4× → sauvegarder → recharger → prédire → écrire</strong>. Chaque étape est simple individuellement ; c'est l'assemblage qui fait le programme.
+      </p>
+
+      <nav class="chapter-nav">
+        <a class="prev" href="06-one-vs-all.html">
+          <span class="nav-label">← Précédent</span>
+          <span class="nav-title">De binaire à multiclasse</span>
+        </a>
+        <a class="next" href="08-bonus.html">
+          <span class="nav-label">Suivant →</span>
+          <span class="nav-title">Les bonus pour aller plus loin</span>
+        </a>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>

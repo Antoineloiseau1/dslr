@@ -1,9 +1,9 @@
 import sys
-import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-import matplotlib.pyplot as plt
 from lib.toolkit import Dataset, Column
+from lib.utils import HOUSE_COLORS
+import matplotlib.pyplot as plt
 
 
 def main(argc: int, argv: list[str]):
@@ -26,7 +26,8 @@ def main(argc: int, argv: list[str]):
     for i, name in enumerate(col_names):
         means = []
         for group in dataset.extract_numeric_column_by_group(name, "Hogwarts House"):
-            axes[i].hist(group.values, alpha=0.6, density=True, label=group.name)
+            color = HOUSE_COLORS.get(group.name, "gray")
+            axes[i].hist(group.values, alpha=0.6, density=True, label=group.name, color=color)
             means.append(group.mean())
         mean_col = Column("tmp", means)
         score = mean_col.std()

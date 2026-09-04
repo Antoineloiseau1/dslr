@@ -3,45 +3,50 @@ from dataclasses import dataclass
 import math
 from lib.utils import to_float
 
+def mean(values: list[float]) -> float:
+    total = 0
+    for value in values:
+        total += value
+    return total / len(values)
+
+def std(values: list[float]) -> float:
+    m = mean(values)
+    sse = 0
+    for value in values:
+        error = value - m
+        sse += error * error
+    variance = sse / (len(values) - 1)
+    return math.sqrt(variance)
+
+
 @dataclass
 class Column:
     name: str
     values: list[float]
-    
+
     def count(self) -> int:
         return len(self.values)
-    
+
     def mean(self) -> float:
-        total = 0
-        for value in self.values:
-            total += value
-        return total / self.count()
-    
+        return mean(self.values)
+
     def std(self) -> float:
-        mean = self.mean()
-        count = self.count()
-        sse = 0         # Sum of Squared Errors
-        for value in self.values:
-            error = value - mean
-            squared_error = error * error
-            sse += squared_error
-        variance = sse / (count - 1)
-        return math.sqrt(variance)
-    
+        return std(self.values)
+
     def min(self) -> float:
         current = self.values[0]
         for value in self.values:
             if value < current:
                 current = value
         return current
-    
+
     def max(self) -> float:
         current = self.values[0]
         for value in self.values:
             if value > current:
                current = value
         return current
-    
+
     def percentile(self, p: float) -> float:
         if p not in (0.25, 0.5, 0.75):
             raise ValueError("p must be 0.25, 0.5 or 0.75")
@@ -55,6 +60,9 @@ class Column:
         upper = sorted_values[upper_index]
         return lower + (upper - lower) * fraction
 
+
+        
+        
 @dataclass
 class Dataset:
     header: list[str]
@@ -132,6 +140,19 @@ class Dataset:
                 values_b.append(converted_b)
         return Column(feature_a, values_a), Column(feature_b, values_b)
 
+    def extract_matrix(self, feature_names: list[str], label_name: str) -> tuple[list[list[float | None]], list[str]]:
+        labels = []
+        features = []
+        label_index = self.header.index(label_name)
+        feature_indexes = [self.header.index(name) for name in feature_names]
+        for row in self.rows:
+            labels.append(row[label_index])
+            feature_list = []
+            for index in feature_indexes:
+                    feature_list.append(to_float(row[index]))
+            features.append(feature_list)
+        return features, labels
+
 
 def covariance(col_a: Column, col_b: Column) -> float:
     mean_a = col_a.mean()
@@ -163,3 +184,66 @@ def find_most_correlated_pair(dataset: Dataset, feature_names: list[str]):
                 best_pair = (feature_a, feature_b)
                 best_columns = (col_a, col_b)
     return best_pair, best_correlation, best_columns
+
+
+# Subject formulas:
+def sigmoid(z: float) -> float:
+    if z >= 0:
+        return 1 / (1 + math.exp(-z))
+    else:
+        ez = math.exp(z)
+        return ez / (1 + ez)
+
+# scalar prouduct between thetas and features (bias included)
+def hypothesis(theta: list[float], features: list[float]) -> float: 
+    if(len(theta) != len(features)):
+        raise ValueError("theta and features must have the same length")
+    z = 0
+    for i in range(len(theta)):
+        z += theta[i] * features[i]
+    return sigmoid(z)
+
+def cost(theta: list[float], rows: list[list[float]], targets: list[bool]) -> float:
+    m = len(rows)
+    total = 0
+    for i, row in enumerate(rows):
+        h = hypothesis(theta, row)
+        h = max(1e-15, min(1 - 1e-15, h))
+        total += targets[i] * math.log(h) + (1 - targets[i]) * math.log(1 - h)
+    return -total / m
+
+def gradient_descent(rows: list[list[float]], thetas: list[float], targets: list[bool]):
+    m = len(rows)
+    gradients = [0.0] * len(thetas)
+    for i, row in enumerate(rows):
+        h = hypothesis(thetas, row)
+        error =  h - targets[i]
+        for j, feature in enumerate(row):
+            gradients[j] += error * feature
+    for j in range(len(gradients)):
+        gradients[j] /= m
+    return gradients
+
+def impute_mean(matrix: list[list[float]]) -> list[list[float]]:
+    means = []
+    nb_cols = len(matrix[0])
+    for i in range(nb_cols):
+        total = 0
+        nb_rows = 0
+        for row in matrix:
+            if row[i] is not None:
+                total += row[i]
+                nb_rows += 1
+        means.append(total / nb_rows)
+    for i in range(nb_cols):
+        for row in matrix:
+            if row[i] is None:
+                row[i] = means[i]
+    return matrix
+
+def standard_matrix(matrix: list[list[float]]) -> list[list[float]]: 
+    return 
+
+
+def standardization(col: Column):
+    return Column(col.name, [(value - col.mean) / col.std for value in col.value])

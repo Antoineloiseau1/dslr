@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Les bonus — Ch.8 §1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <div class="toc-title">Cours — Régression logistique</div>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">01</span> Le problème</summary>
+        <ol><li><a href="01-le-probleme.html">Classer, pas prédire</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">02</span> La sigmoïde</summary>
+        <ol><li><a href="02-sigmoide.html">Transformer un score en probabilité</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">03</span> Le coût</summary>
+        <ol><li><a href="03-cout.html">Mesurer l'erreur du classifieur</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">04</span> Le gradient</summary>
+        <ol><li><a href="04-gradient.html">Apprendre par descente de gradient</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">05</span> Normalisation</summary>
+        <ol><li><a href="05-normalisation.html">Mettre les features à la même échelle</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">06</span> One-vs-All</summary>
+        <ol><li><a href="06-one-vs-all.html">De binaire à multiclasse</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">07</span> Le pipeline complet</summary>
+        <ol><li><a href="07-pipeline.html">De A à Z dans ton code</a></li></ol>
+      </details>
+      <details class="toc-chapter" open>
+        <summary class="toc-chapter-name"><span class="num">08</span> Bonus</summary>
+        <ol><li><a href="08-bonus.html" class="current">Les bonus pour aller plus loin</a></li></ol>
+      </details>
+    </aside>
+
+    <main>
+      <div class="chapter-meta">Chapitre 8 · §1</div>
+      <h1>Les bonus pour aller plus loin</h1>
+      <p class="lede">
+        La partie obligatoire est faite ? Parfait. Ces bonus ne sont pas juste des points en plus — ce sont les <strong>briques fondamentales</strong> que tu retrouveras dans Multilayer Perceptron et Total Perspective Vortex.
+      </p>
+
+      <!-- ═══════════════════════════════════════ -->
+      <h2>1. Early stopping + courbe de coût</h2>
+      <p>
+        Au lieu de fixer un nombre arbitraire d'itérations (10 000), on arrête l'entraînement quand <strong>le coût ne diminue plus significativement</strong>.
+      </p>
+
+      <h3>Le principe</h3>
+      <p>
+        À chaque itération, on calcule le coût $J$. Si la différence avec l'itération précédente est plus petite qu'un seuil $\epsilon$ (ex: $10^{-6}$), on s'arrête.
+      </p>
+      <pre class="code"><span class="kw">for</span> iteration <span class="kw">in</span> range(max_iterations):
+    <span class="cm"># ... gradient descent ...</span>
+    current_cost = cost(theta, X, y)
+    costs.append(current_cost)
+
+    <span class="kw">if</span> iteration > <span class="nu">0</span> <span class="kw">and</span> abs(costs[-<span class="nu">2</span>] - current_cost) < epsilon:
+        print(<span class="st">f"Convergence atteinte à l'itération </span>{iteration}<span class="st">"</span>)
+        <span class="kw">break</span></pre>
+
+      <h3>La courbe de coût</h3>
+      <p>
+        Après l'entraînement, tracer <code>plt.plot(costs)</code>. Tu dois voir une courbe qui descend et se stabilise en plateau. Si elle oscille ou monte, ton learning rate est trop grand.
+      </p>
+
+      <aside class="tangent">
+        <span class="tangent-label">Pour Multilayer Perceptron</span>
+        <p>
+          L'early stopping est <em>indispensable</em> en deep learning. Sans lui, un réseau de neurones continue à s'entraîner au-delà du point optimal et commence à <strong>overfitter</strong> — il mémorise les données au lieu de généraliser. Tu le réutiliseras tel quel.
+        </p>
+      </aside>
+
+      <hr class="ornament">
+
+      <!-- ═══════════════════════════════════════ -->
+      <h2>2. Régularisation L2 (Ridge)</h2>
+      <p>
+        L'idée : pénaliser les poids qui deviennent trop grands. Des poids géants signifient que le modèle est trop sensible à certaines features → <strong>overfitting</strong>.
+      </p>
+
+      <h3>La formule modifiée</h3>
+      <p>
+        On ajoute un terme au coût :
+      </p>
+      $$J(\theta) = -\frac{1}{m} \sum \left[ y \log(h) + (1-y) \log(1-h) \right] + \frac{\lambda}{2m} \sum_{j=1}^{n} \theta_j^2$$
+      <p>
+        Le terme $\frac{\lambda}{2m} \sum \theta_j^2$ pénalise les gros poids. $\lambda$ (lambda) contrôle la force de la pénalité :
+      </p>
+      <ul>
+        <li>$\lambda = 0$ → pas de régularisation (comportement normal)</li>
+        <li>$\lambda$ petit (ex: 0.1) → légère régularisation</li>
+        <li>$\lambda$ grand (ex: 100) → poids forcés vers 0 → modèle trop simple (underfitting)</li>
+      </ul>
+
+      <aside class="danger">
+        <span class="d-label">Attention</span>
+        <p>
+          On ne régularise <strong>pas</strong> $\theta_0$ (le biais). Le biais ne correspond pas à une feature — le pénaliser n'a pas de sens. La somme va de $j = 1$ à $n$, pas de $j = 0$.
+        </p>
+      </aside>
+
+      <h3>L'impact sur le gradient</h3>
+      <p>
+        Le gradient change légèrement :
+      </p>
+      $$\frac{\partial J}{\partial \theta_j} = \frac{1}{m} \sum (h - y) \cdot x_j + \frac{\lambda}{m} \theta_j \quad \text{(pour } j \geq 1\text{)}$$
+      <p>
+        En pratique, c'est <strong>3 lignes de code</strong> en plus dans ta boucle de gradient :
+      </p>
+      <pre class="code"><span class="cm"># Après le calcul normal du gradient :</span>
+<span class="kw">for</span> j <span class="kw">in</span> range(<span class="nu">1</span>, n + <span class="nu">1</span>):  <span class="cm"># skip j=0 (biais)</span>
+    gradients[j] += (lambda_reg / m) * theta[j]</pre>
+
+      <aside class="tangent">
+        <span class="tangent-label">Pour Multilayer Perceptron</span>
+        <p>
+          La régularisation L2 est le mécanisme anti-overfitting le plus fondamental en deep learning. Le terme est exactement le même — tu ajouteras juste $\frac{\lambda}{2m} \sum w^2$ au coût de chaque couche.
+        </p>
+      </aside>
+
+      <hr class="ornament">
+
+      <!-- ═══════════════════════════════════════ -->
+      <h2>3. Métriques + matrice de confusion</h2>
+
+      <h3>Au-delà de l'accuracy</h3>
+      <p>
+        L'accuracy seule peut être trompeuse. Si 90% des élèves sont Gryffindor, un modèle qui répond toujours « Gryffindor » a 90% d'accuracy mais ne sait rien. Les métriques par classe sont plus informatives :
+      </p>
+      <ul>
+        <li><strong>Precision</strong> — parmi ceux que le modèle a classés « Gryffindor », combien le sont vraiment ?
+          $$\text{precision} = \frac{TP}{TP + FP}$$</li>
+        <li><strong>Recall</strong> — parmi les vrais Gryffindor, combien le modèle en a-t-il trouvés ?
+          $$\text{recall} = \frac{TP}{TP + FN}$$</li>
+        <li><strong>F1-score</strong> — la moyenne harmonique des deux :
+          $$F_1 = 2 \cdot \frac{\text{precision} \cdot \text{recall}}{\text{precision} + \text{recall}}$$</li>
+      </ul>
+      <p>
+        Où $TP$ = vrais positifs, $FP$ = faux positifs, $FN$ = faux négatifs.
+      </p>
+
+      <h3>La matrice de confusion</h3>
+      <p>
+        C'est un tableau $K \times K$ qui montre, pour chaque classe réelle, combien d'élèves ont été classés dans chaque classe prédite. Exemple :
+      </p>
+      <table class="data" style="font-family: inherit;">
+        <tr><th></th><th>Prédit G</th><th>Prédit S</th><th>Prédit R</th><th>Prédit H</th></tr>
+        <tr><th>Vrai G</th><td><strong>98</strong></td><td>1</td><td>0</td><td>1</td></tr>
+        <tr><th>Vrai S</th><td>0</td><td><strong>95</strong></td><td>2</td><td>3</td></tr>
+        <tr><th>Vrai R</th><td>1</td><td>0</td><td><strong>97</strong></td><td>2</td></tr>
+        <tr><th>Vrai H</th><td>0</td><td>2</td><td>1</td><td><strong>97</strong></td></tr>
+      </table>
+      <p>
+        La diagonale = les prédictions correctes. Tout ce qui est hors diagonale = les erreurs. Tu peux la tracer avec <code>plt.imshow()</code> pour une version visuelle.
+      </p>
+
+      <hr class="ornament">
+
+      <!-- ═══════════════════════════════════════ -->
+      <h2>4. Mini-batch et Stochastic Gradient Descent</h2>
+
+      <h3>Le batch GD classique</h3>
+      <p>
+        Ce que tu as implémenté : à chaque itération, on parcourt <strong>tous les $m$ exemples</strong> pour calculer un gradient. C'est précis mais lent quand $m$ est grand.
+      </p>
+
+      <h3>Stochastic GD (SGD)</h3>
+      <p>
+        On met à jour les poids après <strong>chaque exemple</strong> (un seul !). Le gradient est très bruyant (basé sur un seul point), mais les mises à jour sont très fréquentes → convergence souvent plus rapide.
+      </p>
+      <pre class="code"><span class="kw">for</span> epoch <span class="kw">in</span> range(epochs):
+    <span class="cm"># Mélanger les données à chaque epoch</span>
+    shuffle(indices)
+    <span class="kw">for</span> i <span class="kw">in</span> indices:
+        h = sigmoid(dot(theta, X[i]))
+        error = h - y[i]
+        <span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+            theta[j] -= alpha * error * X[i][j]</pre>
+
+      <h3>Mini-batch GD</h3>
+      <p>
+        Le compromis : on découpe les données en <strong>lots</strong> (batches) de taille $B$ (typiquement 32 ou 64). On calcule le gradient sur un lot, on met à jour, puis on passe au lot suivant.
+      </p>
+      <pre class="code">batch_size = <span class="nu">32</span>
+<span class="kw">for</span> epoch <span class="kw">in</span> range(epochs):
+    shuffle(indices)
+    <span class="kw">for</span> start <span class="kw">in</span> range(<span class="nu">0</span>, m, batch_size):
+        batch = indices[start:start + batch_size]
+        gradients = [<span class="nu">0.0</span>] * (n + <span class="nu">1</span>)
+        <span class="kw">for</span> i <span class="kw">in</span> batch:
+            h = sigmoid(dot(theta, X[i]))
+            error = h - y[i]
+            <span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+                gradients[j] += error * X[i][j]
+        <span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+            theta[j] -= alpha * gradients[j] / len(batch)</pre>
+
+      <aside class="tangent">
+        <span class="tangent-label">Pour Multilayer Perceptron</span>
+        <p>
+          Tous les réseaux de neurones modernes utilisent le mini-batch GD. Le batch GD classique est trop lent dès qu'on a plus de quelques milliers d'exemples. Implémenter le mini-batch ici te prépare directement.
+        </p>
+      </aside>
+
+      <hr class="ornament">
+
+      <!-- ═══════════════════════════════════════ -->
+      <h2>5. Softmax — la vraie multiclasse</h2>
+      <p>
+        Avec One-vs-All, les 4 probabilités sont indépendantes et ne somment pas à 1. La <strong>régression softmax</strong> résout ça : elle donne directement une distribution de probabilités sur les 4 classes.
+      </p>
+
+      <h3>La fonction Softmax</h3>
+      <p>
+        Au lieu de 4 sigmoïdes indépendantes, on calcule :
+      </p>
+      $$P(y = k \mid x) = \frac{e^{\theta_k^T x}}{\sum_{j=1}^{K} e^{\theta_j^T x}}$$
+      <p>
+        Les 4 probabilités somment à 1. C'est la généralisation naturelle de la sigmoïde à $K$ classes.
+      </p>
+
+      <h3>La fonction de coût : Categorical Cross-Entropy</h3>
+      $$J(\theta) = -\frac{1}{m} \sum_{i=1}^{m} \sum_{k=1}^{K} y_k^{(i)} \log(P(y = k \mid x^{(i)}))$$
+      <p>
+        Où $y_k^{(i)} = 1$ si l'élève $i$ est dans la classe $k$, 0 sinon (encodage <strong>one-hot</strong>).
+      </p>
+
+      <h3>Le gradient (bonne nouvelle)</h3>
+      <p>
+        Le gradient garde exactement la même forme :
+      </p>
+      $$\frac{\partial J}{\partial \theta_{k,j}} = \frac{1}{m} \sum_{i=1}^{m} (P(y = k \mid x^{(i)}) - y_k^{(i)}) \cdot x_j^{(i)}$$
+      <p>
+        C'est la même structure que le gradient de la logistique binaire — $(h - y) \cdot x$. La seule différence : on a $K$ vecteurs de poids au lieu de 4 classifieurs séparés, et $h$ est remplacé par le softmax.
+      </p>
+
+      <aside class="danger">
+        <span class="d-label">Stabilité numérique du Softmax</span>
+        <p>
+          $e^{z}$ peut exploser si $z$ est grand. Astuce : soustraire $\max(z_1, \ldots, z_K)$ de chaque $z_k$ avant de calculer les exponentielles. Le résultat est mathématiquement identique mais numériquement stable.
+        </p>
+      </aside>
+
+      <pre class="code"><span class="kw">def</span> <span class="fn">softmax</span>(scores):
+    <span class="cm"># scores = [θ₁ᵀx, θ₂ᵀx, θ₃ᵀx, θ₄ᵀx]</span>
+    max_s = max(scores)
+    exps = [math.exp(s - max_s) <span class="kw">for</span> s <span class="kw">in</span> scores]
+    total = sum(exps)
+    <span class="kw">return</span> [e / total <span class="kw">for</span> e <span class="kw">in</span> exps]</pre>
+
+      <aside class="tangent">
+        <span class="tangent-label">Pour Multilayer Perceptron</span>
+        <p>
+          La couche de sortie d'un réseau de neurones multiclasse est <em>exactement</em> un softmax. Si tu l'implémentes ici, tu auras littéralement la dernière couche de ton réseau de neurones déjà prête. C'est aussi la couche la plus « magique » — elle transforme des scores bruts en une distribution de probabilités.
+        </p>
+      </aside>
+
+      <hr class="ornament">
+
+      <h2>6. Résumé des bonus</h2>
+      <table class="data" style="font-family: inherit; font-size: inherit;">
+        <tr><th>Bonus</th><th>Difficulté</th><th>Réutilisé en MLP ?</th></tr>
+        <tr><td>Early stopping</td><td>Facile</td><td>Oui, indispensable</td></tr>
+        <tr><td>Régularisation L2</td><td>Facile</td><td>Oui, fondamental</td></tr>
+        <tr><td>Métriques + confusion</td><td>Moyen</td><td>Oui, pour évaluation</td></tr>
+        <tr><td>Mini-batch / SGD</td><td>Moyen</td><td>Oui, c'est le standard</td></tr>
+        <tr><td>Softmax</td><td>Plus dur</td><td>Oui, c'est la dernière couche</td></tr>
+      </table>
+
+      <div class="pull-quote">
+        Ces 5 bonus + la régression logistique = <strong>70% de Multilayer Perceptron</strong> déjà fait.
+      </div>
+
+      <h2>7. Pour aller plus loin — vidéos</h2>
+      <ul>
+        <li><a href="https://www.youtube.com/watch?v=yIYKR4sgzI8" target="_blank">StatQuest: Logistic Regression</a> — la base pour tout comprendre (EN)</li>
+        <li><a href="https://www.youtube.com/watch?v=h9M9GpGmdOE" target="_blank">Régression logistique — Principe</a> (FR)</li>
+        <li><a href="https://www.youtube.com/watch?v=l5-E1rzZ2cA" target="_blank">Comprendre La Régression Logistique En Moins DE 10 Min</a> (FR)</li>
+        <li><a href="https://developers.google.com/machine-learning/crash-course/multi-class-neural-networks/one-vs-all" target="_blank">Google ML Crash Course — One-vs-All</a> (EN)</li>
+      </ul>
+
+      <nav class="chapter-nav">
+        <a class="prev" href="07-pipeline.html">
+          <span class="nav-label">← Précédent</span>
+          <span class="nav-title">De A à Z dans ton code</span>
+        </a>
+        <span></span>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>

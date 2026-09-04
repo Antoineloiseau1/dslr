@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>One-vs-All — Ch.6 §1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <div class="toc-title">Cours — Régression logistique</div>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">01</span> Le problème</summary>
+        <ol><li><a href="01-le-probleme.html">Classer, pas prédire</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">02</span> La sigmoïde</summary>
+        <ol><li><a href="02-sigmoide.html">Transformer un score en probabilité</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">03</span> Le coût</summary>
+        <ol><li><a href="03-cout.html">Mesurer l'erreur du classifieur</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">04</span> Le gradient</summary>
+        <ol><li><a href="04-gradient.html">Apprendre par descente de gradient</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">05</span> Normalisation</summary>
+        <ol><li><a href="05-normalisation.html">Mettre les features à la même échelle</a></li></ol>
+      </details>
+      <details class="toc-chapter" open>
+        <summary class="toc-chapter-name"><span class="num">06</span> One-vs-All</summary>
+        <ol><li><a href="06-one-vs-all.html" class="current">De binaire à multiclasse</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">07</span> Le pipeline complet</summary>
+        <ol><li><a href="07-pipeline.html">De A à Z dans ton code</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">08</span> Bonus</summary>
+        <ol><li><a href="08-bonus.html">Les bonus pour aller plus loin</a></li></ol>
+      </details>
+    </aside>
+
+    <main>
+      <div class="chapter-meta">Chapitre 6 · §1</div>
+      <h1>De binaire à multiclasse</h1>
+      <p class="lede">
+        On sait entraîner un classifieur qui répond oui ou non. Mais le Choixpeau doit choisir parmi <strong>4 maisons</strong>. La stratégie <strong>One-vs-All</strong> transforme un problème à $K$ classes en $K$ problèmes binaires.
+      </p>
+
+      <h2>1. Le principe</h2>
+      <p>
+        Pour $K = 4$ classes (Gryffindor, Slytherin, Ravenclaw, Hufflepuff), on entraîne <strong>4 classifieurs binaires indépendants</strong> :
+      </p>
+      <table class="data" style="font-family: inherit; font-size: inherit;">
+        <tr><th>Classifieur</th><th>$y = 1$</th><th>$y = 0$</th></tr>
+        <tr><td>$h_\theta^{(1)}$</td><td>Gryffindor</td><td>Tout le reste</td></tr>
+        <tr><td>$h_\theta^{(2)}$</td><td>Slytherin</td><td>Tout le reste</td></tr>
+        <tr><td>$h_\theta^{(3)}$</td><td>Ravenclaw</td><td>Tout le reste</td></tr>
+        <tr><td>$h_\theta^{(4)}$</td><td>Hufflepuff</td><td>Tout le reste</td></tr>
+      </table>
+      <p>
+        Chaque classifieur a <strong>ses propres poids</strong> $\theta^{(k)}$. Il apprend à répondre « est-ce la classe $k$ ? ».
+      </p>
+
+      <h2>2. L'entraînement</h2>
+      <p>
+        Pour entraîner le classifieur de Gryffindor, on transforme les labels :
+      </p>
+      <ul>
+        <li>Si l'élève est Gryffindor → $y = 1$</li>
+        <li>Sinon (Slytherin, Ravenclaw ou Hufflepuff) → $y = 0$</li>
+      </ul>
+      <p>
+        Puis on lance le gradient descent avec la binary cross-entropy, exactement comme dans les chapitres précédents. On obtient un vecteur de poids $\theta^{(\text{Gryff})}$.
+      </p>
+      <p>
+        On recommence pour Slytherin, Ravenclaw, Hufflepuff. À la fin, on a 4 vecteurs de poids.
+      </p>
+
+      <div class="pull-quote">
+        One-vs-All = <strong>entraîner le même algorithme 4 fois</strong>, en changeant juste la définition de « oui » et « non ».
+      </div>
+
+      <aside class="tangent">
+        <span class="tangent-label">Pourquoi ça marche</span>
+        <p>
+          Chaque classifieur apprend un « profil » différent. Le classifieur Gryffindor apprend que les Gryffindor ont plutôt telles et telles notes. Le classifieur Slytherin apprend un profil différent. Quand on présente un nouvel élève, le classifieur dont le profil correspond le mieux donne la probabilité la plus haute.
+        </p>
+      </aside>
+
+      <h2>3. La prédiction</h2>
+      <p>
+        Pour prédire la maison d'un nouvel élève $x$ :
+      </p>
+      <ol>
+        <li>Calculer $h_\theta^{(1)}(x)$ = probabilité d'être Gryffindor</li>
+        <li>Calculer $h_\theta^{(2)}(x)$ = probabilité d'être Slytherin</li>
+        <li>Calculer $h_\theta^{(3)}(x)$ = probabilité d'être Ravenclaw</li>
+        <li>Calculer $h_\theta^{(4)}(x)$ = probabilité d'être Hufflepuff</li>
+        <li>Prendre la classe avec la <strong>probabilité maximale</strong></li>
+      </ol>
+      $$\text{prédiction} = \arg\max_{k} \; h_\theta^{(k)}(x)$$
+
+      <h3>Exemple</h3>
+      <table class="data">
+        <tr><th>Classifieur</th><th>Probabilité</th></tr>
+        <tr><td>Gryffindor</td><td>$0.12$</td></tr>
+        <tr><td>Slytherin</td><td>$0.05$</td></tr>
+        <tr><td>Ravenclaw</td><td>$\mathbf{0.71}$</td></tr>
+        <tr><td>Hufflepuff</td><td>$0.32$</td></tr>
+      </table>
+      <p>
+        → Ravenclaw a la probabilité la plus haute (0.71). Le modèle prédit <strong>Ravenclaw</strong>.
+      </p>
+
+      <aside class="tangent">
+        <span class="tangent-label">Les probabilités ne s'additionnent pas à 1</span>
+        <p>
+          Tu auras remarqué : $0.12 + 0.05 + 0.71 + 0.32 = 1.20$, pas $1.0$. C'est normal. Chaque classifieur est indépendant — il donne sa propre probabilité sans se soucier des autres. Si tu veux que ça somme à 1, c'est le bonus <strong>Softmax</strong> qui le fait (voir chapitre bonus).
+        </p>
+      </aside>
+
+      <h2>4. En pseudo-code</h2>
+      <pre class="code"><span class="cm"># Entraînement</span>
+houses = [<span class="st">"Gryffindor"</span>, <span class="st">"Slytherin"</span>, <span class="st">"Ravenclaw"</span>, <span class="st">"Hufflepuff"</span>]
+all_thetas = {}
+
+<span class="kw">for</span> house <span class="kw">in</span> houses:
+    <span class="cm"># Transformer les labels : 1 si cette maison, 0 sinon</span>
+    y_binary = [<span class="nu">1</span> <span class="kw">if</span> label == house <span class="kw">else</span> <span class="nu">0</span> <span class="kw">for</span> label <span class="kw">in</span> labels]
+    <span class="cm"># Entraîner avec gradient descent</span>
+    theta = gradient_descent(X, y_binary, alpha, iterations)
+    all_thetas[house] = theta</pre>
+
+      <pre class="code"><span class="cm"># Prédiction</span>
+<span class="kw">def</span> <span class="fn">predict</span>(x, all_thetas):
+    best_house = <span class="kw">None</span>
+    best_prob = -<span class="nu">1</span>
+    <span class="kw">for</span> house, theta <span class="kw">in</span> all_thetas.items():
+        prob = sigmoid(dot(theta, x))
+        <span class="kw">if</span> prob > best_prob:
+            best_prob = prob
+            best_house = house
+    <span class="kw">return</span> best_house</pre>
+
+      <aside class="yourcode">
+        <span class="yc-label">Dans ton code</span>
+        <p>
+          <code>logreg_train.py</code> boucle sur les 4 maisons, entraîne un classifieur par maison, et sauvegarde les 4 vecteurs $\theta$ (+ les $\mu$/$\sigma$ de normalisation) dans un fichier CSV.<br>
+          <code>logreg_predict.py</code> charge ce fichier, calcule les 4 probabilités pour chaque élève, et écrit la maison la plus probable dans <code>houses.csv</code>.
+        </p>
+      </aside>
+
+      <h2>5. Format de sortie</h2>
+      <p>
+        Le sujet exige que <code>houses.csv</code> ait exactement ce format :
+      </p>
+      <pre class="code">Index,Hogwarts House
+<span class="nu">0</span>,Gryffindor
+<span class="nu">1</span>,Hufflepuff
+<span class="nu">2</span>,Ravenclaw
+<span class="nu">3</span>,Hufflepuff
+<span class="nu">4</span>,Slytherin
+...</pre>
+
+      <h2>6. Résumé</h2>
+      <ul>
+        <li><strong>One-vs-All</strong> : pour $K$ classes, entraîner $K$ classifieurs binaires</li>
+        <li>Chaque classifieur répond « est-ce la classe $k$ ? oui/non »</li>
+        <li>Pour prédire : lancer les $K$ classifieurs, prendre celui qui a la <strong>probabilité max</strong></li>
+        <li>Les probabilités ne somment pas à 1 (contrairement à Softmax)</li>
+        <li>En pratique, tu boucles sur les 4 maisons et tu fais exactement le même entraînement 4 fois</li>
+      </ul>
+
+      <nav class="chapter-nav">
+        <a class="prev" href="05-normalisation.html">
+          <span class="nav-label">← Précédent</span>
+          <span class="nav-title">Mettre les features à la même échelle</span>
+        </a>
+        <a class="next" href="07-pipeline.html">
+          <span class="nav-label">Suivant →</span>
+          <span class="nav-title">De A à Z dans ton code</span>
+        </a>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>
