@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Le gradient — Ch.4 §1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <div class="toc-title">Cours — Régression logistique</div>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">01</span> Le problème</summary>
+        <ol><li><a href="01-le-probleme.html">Classer, pas prédire</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">02</span> La sigmoïde</summary>
+        <ol><li><a href="02-sigmoide.html">Transformer un score en probabilité</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">03</span> Le coût</summary>
+        <ol><li><a href="03-cout.html">Mesurer l'erreur du classifieur</a></li></ol>
+      </details>
+      <details class="toc-chapter" open>
+        <summary class="toc-chapter-name"><span class="num">04</span> Le gradient</summary>
+        <ol><li><a href="04-gradient.html" class="current">Apprendre par descente de gradient</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">05</span> Normalisation</summary>
+        <ol><li><a href="05-normalisation.html">Mettre les features à la même échelle</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">06</span> One-vs-All</summary>
+        <ol><li><a href="06-one-vs-all.html">De binaire à multiclasse</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">07</span> Le pipeline complet</summary>
+        <ol><li><a href="07-pipeline.html">De A à Z dans ton code</a></li></ol>
+      </details>
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">08</span> Bonus</summary>
+        <ol><li><a href="08-bonus.html">Les bonus pour aller plus loin</a></li></ol>
+      </details>
+    </aside>
+
+    <main>
+      <div class="chapter-meta">Chapitre 4 · §1</div>
+      <h1>Apprendre par descente de gradient</h1>
+      <p class="lede">
+        On a un coût $J(\theta)$ qui mesure l'erreur. On veut le minimiser. La dernière formule du sujet nous dit <strong>dans quelle direction ajuster chaque poids</strong>.
+      </p>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>1. Rappel : le gradient descent en 3 phrases</h2>
+      <p>
+        Tu l'as déjà fait en ft_linear_regression. Le principe :
+      </p>
+      <ol>
+        <li>On calcule la <strong>pente</strong> (le gradient) du coût par rapport à chaque poids $\theta_j$</li>
+        <li>On fait un petit pas dans la <strong>direction opposée</strong> à la pente (pour descendre)</li>
+        <li>On <strong>recommence</strong> jusqu'à ce que le coût ne bouge plus</li>
+      </ol>
+      <p>La règle de mise à jour pour chaque poids :</p>
+      $$\theta_j := \theta_j - \alpha \times \frac{\partial J}{\partial \theta_j}$$
+      <p>
+        Où $\alpha$ est le <strong>learning rate</strong> (taille du pas). Et $\frac{\partial J}{\partial \theta_j}$ est la pente — c'est ça que la formule du sujet nous donne.
+      </p>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>2. L'équation du sujet</h2>
+      <p>Voici la dernière formule de l'annexe (page 11) :</p>
+      $$\frac{\partial}{\partial \theta_j} J(\theta) = \frac{1}{m} \sum_{i=1}^{m} (h_\theta(x^i) - y^i) x_j^i$$
+
+      <h3>Chaque symbole expliqué</h3>
+      <ul>
+        <li>$\frac{\partial}{\partial \theta_j} J(\theta)$ — c'est la <strong>dérivée partielle</strong> du coût par rapport au poids $\theta_j$. En français : « de combien le coût change si je bouge un tout petit peu le poids $\theta_j$ ? ». C'est la <strong>pente</strong>.</li>
+        <li>$j$ — l'<strong>indice du poids</strong> qu'on est en train de calculer. $j = 0$ pour le biais, $j = 1$ pour le poids d'Astronomy, $j = 2$ pour Herbology, etc.</li>
+        <li>$\frac{1}{m}$ — on divise par le nombre d'élèves → c'est une <strong>moyenne</strong>.</li>
+        <li>$\sum_{i=1}^{m}$ — on <strong>additionne</strong> pour chaque élève $i$. C'est une boucle <code>for i in range(m)</code>.</li>
+        <li>$h_\theta(x^i)$ — la <strong>prédiction</strong> du modèle pour l'élève $i$ (probabilité entre 0 et 1, calculée au ch.2).</li>
+        <li>$y^i$ — la <strong>vraie réponse</strong> pour l'élève $i$ ($0$ ou $1$).</li>
+        <li>$(h_\theta(x^i) - y^i)$ — l'<strong>erreur</strong> : la différence entre ce que le modèle a prédit et la réalité.</li>
+        <li>$x_j^i$ — la valeur de la <strong>feature $j$</strong> pour l'<strong>élève $i$</strong>. Par exemple, si $j = 2$ (Herbology) et $i = 47$, c'est la note en Herbology de l'élève 47.</li>
+      </ul>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>3. En français, ça dit quoi ?</h2>
+      <p>La formule dit :</p>
+
+      <div class="pull-quote">
+        Pour savoir comment ajuster le poids $\theta_j$, regarde <strong>chaque élève</strong> : calcule l'erreur (prédiction − réalité), <strong>multiplie par la note $x_j$</strong> de cet élève, et fais la <strong>moyenne</strong> de tout ça.
+      </div>
+
+      <p>Pourquoi multiplier l'erreur par $x_j$ ? Parce que :</p>
+      <ul>
+        <li>Si l'erreur est grande ET que la feature est grande → le poids doit beaucoup bouger</li>
+        <li>Si l'erreur est grande MAIS la feature est petite → le poids ne bouge pas tant (ce n'est pas « la faute » de cette feature)</li>
+        <li>Si l'erreur est quasi nulle → le poids ne bouge presque pas (pas besoin de corriger)</li>
+      </ul>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>4. Exemple complet, pas à pas</h2>
+      <p>
+        Prenons un modèle simplifié avec seulement 2 features. On a 3 élèves. Les poids actuels sont $\theta = [0.1,\; 0.5,\; -0.3]$ (biais + 2 poids).
+      </p>
+      <table class="data" style="font-family: inherit;">
+        <tr><th>Élève $i$</th><th>$x^i$ (avec le 1)</th><th>$y^i$</th><th>$h_\theta(x^i)$</th><th>Erreur $(h - y)$</th></tr>
+        <tr><td>1</td><td>$[1, \; 0.7, \; -1.5]$</td><td>$1$</td><td>$0.41$</td><td>$0.41 - 1 = -0.59$</td></tr>
+        <tr><td>2</td><td>$[1, \; -0.3, \; 2.1]$</td><td>$0$</td><td>$0.39$</td><td>$0.39 - 0 = 0.39$</td></tr>
+        <tr><td>3</td><td>$[1, \; 1.2, \; 0.5]$</td><td>$1$</td><td>$0.65$</td><td>$0.65 - 1 = -0.35$</td></tr>
+      </table>
+
+      <h3>Calculons le gradient pour $\theta_0$ (le biais, $j = 0$)</h3>
+      <p>On a $x_0^i = 1$ pour tout le monde (c'est la colonne de 1) :</p>
+      $$\frac{\partial J}{\partial \theta_0} = \frac{1}{3} \left[ (-0.59) \times 1 + (0.39) \times 1 + (-0.35) \times 1 \right]$$
+      $$= \frac{1}{3} \left[ -0.59 + 0.39 - 0.35 \right] = \frac{-0.55}{3} = -0.183$$
+
+      <h3>Calculons le gradient pour $\theta_1$ (feature 1, $j = 1$)</h3>
+      <p>On utilise $x_1^i$ (la note de la feature 1 de chaque élève) :</p>
+      $$\frac{\partial J}{\partial \theta_1} = \frac{1}{3} \left[ (-0.59) \times 0.7 + (0.39) \times (-0.3) + (-0.35) \times 1.2 \right]$$
+      $$= \frac{1}{3} \left[ -0.413 - 0.117 - 0.42 \right] = \frac{-0.95}{3} = -0.317$$
+
+      <h3>Calculons le gradient pour $\theta_2$ (feature 2, $j = 2$)</h3>
+      $$\frac{\partial J}{\partial \theta_2} = \frac{1}{3} \left[ (-0.59) \times (-1.5) + (0.39) \times 2.1 + (-0.35) \times 0.5 \right]$$
+      $$= \frac{1}{3} \left[ 0.885 + 0.819 - 0.175 \right] = \frac{1.529}{3} = 0.510$$
+
+      <h3>Mise à jour des poids (avec $\alpha = 0.1$)</h3>
+      $$\theta_0 := 0.1 - 0.1 \times (-0.183) = 0.1 + 0.018 = 0.118$$
+      $$\theta_1 := 0.5 - 0.1 \times (-0.317) = 0.5 + 0.032 = 0.532$$
+      $$\theta_2 := -0.3 - 0.1 \times 0.510 = -0.3 - 0.051 = -0.351$$
+      <p>
+        Les poids ont légèrement bougé. $\theta_0$ et $\theta_1$ ont augmenté (gradient négatif → on ajoute), $\theta_2$ a diminué (gradient positif → on soustrait). C'est <strong>une</strong> itération. On recommence des milliers de fois.
+      </p>
+
+      <aside class="tangent">
+        <span class="tangent-label">Lecture de la mise à jour</span>
+        <p>
+          Le gradient est <strong>négatif</strong> pour $\theta_0$ et $\theta_1$. Ça veut dire que le coût diminue si ces poids augmentent. Donc on les augmente. Le gradient est <strong>positif</strong> pour $\theta_2$. Ça veut dire que le coût diminue si ce poids diminue. Donc on le diminue. On va toujours dans la direction qui fait baisser le coût.
+        </p>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>5. La formule = deux boucles for imbriquées</h2>
+      <p>En code, une itération complète :</p>
+      <pre class="code"><span class="cm"># alpha = learning rate (ex: 0.1)</span>
+<span class="cm"># m = nombre d'élèves</span>
+<span class="cm"># n+1 = nombre de poids (biais + features)</span>
+
+<span class="cm"># Étape 1 : calculer TOUS les gradients</span>
+gradients = [<span class="nu">0.0</span>] * (n + <span class="nu">1</span>)
+
+<span class="kw">for</span> i <span class="kw">in</span> range(m):               <span class="cm"># pour chaque élève</span>
+    h = hypothesis(theta, X[i])  <span class="cm"># prédiction (sigmoïde)</span>
+    error = h - y[i]             <span class="cm"># erreur = h - y</span>
+
+    <span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):       <span class="cm"># pour chaque poids</span>
+        gradients[j] += error * X[i][j]  <span class="cm"># erreur × feature</span>
+
+<span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+    gradients[j] /= m            <span class="cm"># diviser par m (moyenne)</span>
+
+<span class="cm"># Étape 2 : mettre à jour TOUS les poids</span>
+<span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+    theta[j] -= alpha * gradients[j]  <span class="cm"># θⱼ := θⱼ - α × gradient</span></pre>
+
+      <aside class="danger">
+        <span class="d-label">Piège classique — mise à jour simultanée</span>
+        <p>
+          Il faut calculer <strong>tous les gradients d'abord</strong>, puis mettre à jour <strong>tous les poids en une fois</strong>. Si tu mets à jour $\theta_0$ avant de calculer le gradient de $\theta_1$, le gradient de $\theta_1$ utilisera le nouveau $\theta_0$ au lieu de l'ancien → calcul faussé. C'est pour ça qu'on a deux étapes séparées.
+        </p>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>6. La boucle d'entraînement complète</h2>
+      <pre class="code"><span class="cm"># On répète l'opération des milliers de fois</span>
+<span class="kw">for</span> iteration <span class="kw">in</span> range(iterations):
+
+    <span class="cm"># ── Calcul des gradients ──</span>
+    gradients = [<span class="nu">0.0</span>] * (n + <span class="nu">1</span>)
+    <span class="kw">for</span> i <span class="kw">in</span> range(m):
+        h = hypothesis(theta, X[i])
+        error = h - y[i]
+        <span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+            gradients[j] += error * X[i][j]
+    <span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+        gradients[j] /= m
+
+    <span class="cm"># ── Mise à jour des poids ──</span>
+    <span class="kw">for</span> j <span class="kw">in</span> range(n + <span class="nu">1</span>):
+        theta[j] -= alpha * gradients[j]</pre>
+      <p>
+        C'est tout. C'est la boucle d'entraînement. Chaque tour de boucle est une <strong>itération</strong> du gradient descent. Le modèle s'améliore un peu à chaque tour.
+      </p>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>7. Les hyperparamètres</h2>
+      <table class="data" style="font-family: inherit; font-size: inherit;">
+        <tr><th>Nom</th><th>Symbole</th><th>Rôle</th><th>Valeur pour commencer</th></tr>
+        <tr><td>Learning rate</td><td>$\alpha$</td><td>Taille du pas</td><td>$0.1$ (baisser si ça diverge)</td></tr>
+        <tr><td>Itérations</td><td>—</td><td>Nombre de tours</td><td>$10\,000$ (ou early stopping)</td></tr>
+      </table>
+      <ul>
+        <li>$\alpha$ trop grand → le coût explose (divergence)</li>
+        <li>$\alpha$ trop petit → le coût descend très lentement (10× plus d'itérations)</li>
+        <li>La courbe de coût (ch.3) est ton meilleur outil pour régler $\alpha$</li>
+      </ul>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>8. La surprise : même formule que ft_linear_regression</h2>
+      <p>
+        Compare les deux :
+      </p>
+      <table class="data" style="font-family: inherit; font-size: inherit;">
+        <tr><th></th><th>Régression linéaire</th><th>Régression logistique</th></tr>
+        <tr><td>Gradient</td><td>$\frac{1}{m} \sum (h - y) \cdot x_j$</td><td>$\frac{1}{m} \sum (h - y) \cdot x_j$</td></tr>
+        <tr><td>Hypothèse $h$</td><td>$\theta^T x$ (linéaire)</td><td>$g(\theta^T x)$ (sigmoïde)</td></tr>
+      </table>
+      <p>
+        <strong>La formule du gradient est identique.</strong> La seule différence est dans la façon dont on calcule $h$ : linéaire vs sigmoïde. Tout le reste — la boucle, la mise à jour, le learning rate — est pareil.
+      </p>
+
+      <div class="pull-quote">
+        Tu sais déjà faire du gradient descent. Ici, il suffit de <strong>remplacer $h = \theta^T x$ par $h = g(\theta^T x)$</strong>. Le reste ne change pas.
+      </div>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>9. Résumé</h2>
+      <ul>
+        <li>La formule du sujet $\frac{\partial J}{\partial \theta_j} = \frac{1}{m} \sum (h - y) \cdot x_j$ dit comment ajuster chaque poids</li>
+        <li>$(h - y)$ = l'erreur, $x_j$ = la feature correspondante</li>
+        <li>On calcule tous les gradients d'abord, puis on met à jour tous les poids</li>
+        <li>$\theta_j := \theta_j - \alpha \times \text{gradient}_j$</li>
+        <li>On répète des milliers de fois → le coût baisse → le modèle apprend</li>
+        <li>C'est la <strong>même formule</strong> qu'en régression linéaire — seul le $h$ change</li>
+      </ul>
+
+      <h2>10. Pour aller plus loin — vidéos</h2>
+      <ul>
+        <li><a href="https://www.youtube.com/watch?v=yIYKR4sgzI8" target="_blank">StatQuest: Logistic Regression</a> — montre la dérivation du gradient (EN)</li>
+        <li><a href="https://www.youtube.com/watch?v=h9M9GpGmdOE" target="_blank">Régression logistique — Principe</a> — explication pas à pas (FR)</li>
+      </ul>
+
+      <nav class="chapter-nav">
+        <a class="prev" href="03-cout.html">
+          <span class="nav-label">← Précédent</span>
+          <span class="nav-title">Mesurer l'erreur du classifieur</span>
+        </a>
+        <a class="next" href="05-normalisation.html">
+          <span class="nav-label">Suivant →</span>
+          <span class="nav-title">Mettre les features à la même échelle</span>
+        </a>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>

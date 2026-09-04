@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classer, pas prédire — Ch.1 §1</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="toc">
+      <div class="toc-title">Cours — Régression logistique</div>
+
+      <details class="toc-chapter" open>
+        <summary class="toc-chapter-name"><span class="num">01</span> Le problème</summary>
+        <ol>
+          <li><a href="01-le-probleme.html" class="current">Classer, pas prédire</a></li>
+        </ol>
+      </details>
+
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">02</span> La sigmoïde</summary>
+        <ol>
+          <li><a href="02-sigmoide.html">Transformer un score en probabilité</a></li>
+        </ol>
+      </details>
+
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">03</span> Le coût</summary>
+        <ol>
+          <li><a href="03-cout.html">Mesurer l'erreur du classifieur</a></li>
+        </ol>
+      </details>
+
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">04</span> Le gradient</summary>
+        <ol>
+          <li><a href="04-gradient.html">Apprendre par descente de gradient</a></li>
+        </ol>
+      </details>
+
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">05</span> Normalisation</summary>
+        <ol>
+          <li><a href="05-normalisation.html">Mettre les features à la même échelle</a></li>
+        </ol>
+      </details>
+
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">06</span> One-vs-All</summary>
+        <ol>
+          <li><a href="06-one-vs-all.html">De binaire à multiclasse</a></li>
+        </ol>
+      </details>
+
+      <details class="toc-chapter">
+        <summary class="toc-chapter-name"><span class="num">07</span> Le pipeline complet</summary>
+        <ol>
+          <li><a href="07-pipeline.html">De A à Z dans ton code</a></li>
+        </ol>
+      </details>
+    </aside>
+
+    <main>
+      <div class="chapter-meta">Chapitre 1 · §1</div>
+      <h1>Classer, pas prédire</h1>
+      <p class="lede">
+        Dans ft_linear_regression, on prédisait un <em>nombre</em> : le prix d'une voiture. Ici le problème change complètement : on doit choisir une <em>catégorie</em>. Le Choixpeau magique regarde un élève et dit « Gryffindor ». Pas un prix. Pas un score. Un <strong>nom</strong>.
+      </p>
+
+      <h2>1. Régression vs classification</h2>
+      <p>
+        En machine learning, il y a deux grandes familles de problèmes supervisés :
+      </p>
+      <ul>
+        <li><strong>Régression</strong> — la sortie est un nombre continu. « Quel prix pour cette voiture ? » → 7 432 €.</li>
+        <li><strong>Classification</strong> — la sortie est une catégorie parmi un ensemble fini. « Quelle maison pour cet élève ? » → Gryffindor.</li>
+      </ul>
+      <p>
+        Tu as déjà fait de la régression. Le modèle sortait $h_\theta(x) = \theta_0 + \theta_1 x$, un nombre quelconque entre $-\infty$ et $+\infty$. Pour la classification, on a besoin d'autre chose : une sortie qui ressemble à une <em>décision</em>.
+      </p>
+
+      <h2>2. Le cas binaire d'abord</h2>
+      <p>
+        Avant de trier dans 4 maisons, commençons simple : <strong>deux classes seulement</strong>. Par exemple, « est-ce un Gryffindor ? » Oui ou non. On code ça :
+      </p>
+      <ul>
+        <li>$y = 1$ → oui, c'est un Gryffindor</li>
+        <li>$y = 0$ → non, c'est autre chose</li>
+      </ul>
+      <p>
+        Le modèle ne va pas répondre « oui » ou « non » directement. Il va donner une <strong>probabilité</strong> : « je suis sûr à 87% que c'est un Gryffindor ». Ensuite, on décide : si la probabilité dépasse 0.5, on dit oui.
+      </p>
+
+      <div class="pull-quote">
+        Le modèle ne classe pas directement. Il donne une <strong>probabilité</strong>, et c'est toi qui fixes le seuil.
+      </div>
+
+      <h2>3. Pourquoi pas la régression linéaire ?</h2>
+      <p>
+        Tu pourrais te dire : « je mets $y = 0$ ou $y = 1$ et je fais une droite comme avant ». Le problème, c'est que la droite $h_\theta(x) = \theta^T x$ peut sortir des valeurs comme $-3.2$ ou $47.8$. Ça n'a aucun sens pour une probabilité, qui doit rester entre 0 et 1.
+      </p>
+      <p>
+        Il nous faut une fonction qui <strong>écrase</strong> n'importe quel nombre dans l'intervalle $[0, 1]$. Cette fonction existe, et elle s'appelle la <em>sigmoïde</em>.
+      </p>
+
+      <aside class="tangent">
+        <span class="tangent-label">Analogie</span>
+        <p>
+          Imagine un thermostat. La régression linéaire te dirait « il fait 23.7°C » — un nombre continu. La classification te dirait « chauffage ON ou OFF » — une décision binaire. Mais pour prendre cette décision intelligemment, tu passes par une probabilité intermédiaire : « il y a 85% de chances qu'il fasse trop froid → ON ».
+        </p>
+      </aside>
+
+      <h2>4. Ton problème : 4 classes</h2>
+      <p>
+        Le Choixpeau doit trier les élèves dans 4 maisons : Gryffindor, Slytherin, Ravenclaw, Hufflepuff. C'est un problème <strong>multiclasse</strong>. On ne peut pas juste dire oui/non.
+      </p>
+      <p>
+        La stratégie qu'on va utiliser s'appelle <strong>One-vs-All</strong> (ou One-vs-Rest). L'idée est simple :
+      </p>
+      <ol>
+        <li>On entraîne un classifieur binaire pour Gryffindor : « est-ce un Gryffindor ? oui/non »</li>
+        <li>Un deuxième pour Slytherin : « est-ce un Slytherin ? oui/non »</li>
+        <li>Un troisième pour Ravenclaw</li>
+        <li>Un quatrième pour Hufflepuff</li>
+      </ol>
+      <p>
+        Pour classer un nouvel élève, on lance les 4 classifieurs. Chacun donne sa probabilité. On prend celui qui est <strong>le plus confiant</strong>.
+      </p>
+
+      <aside class="yourcode">
+        <span class="yc-label">Dans ton code</span>
+        <p>
+          Tu auras 4 jeux de poids $\theta$ — un par maison. <code>logreg_train.py</code> en entraîne 4 en boucle. <code>logreg_predict.py</code> calcule les 4 probabilités et garde la plus haute.
+        </p>
+      </aside>
+
+      <h2>5. Les données dont tu disposes</h2>
+      <p>
+        Ton dataset contient 1600 élèves avec 13 notes (features numériques). Tu as analysé ces features avec ton pair plot et retenu celles qui séparent les maisons : Astronomy, Herbology, Defense Against the Dark Arts, Divination, Muggle Studies, Ancient Runes, History of Magic, Transfiguration, Charms, Flying, et Potions.
+      </p>
+      <p>
+        L'objectif de <code>logreg_train.py</code> est d'apprendre des <strong>poids</strong> $\theta$ qui, combinés à ces notes, permettent de deviner la maison d'un élève qu'on n'a jamais vu. C'est le même principe que ft_linear_regression, mais au lieu de deviner un prix, on devine une catégorie.
+      </p>
+
+      <h2>6. Le plan d'attaque</h2>
+      <p>
+        Voici le chemin qu'on va suivre dans ce cours :
+      </p>
+      <ol>
+        <li><strong>La sigmoïde</strong> — transformer un score brut en probabilité entre 0 et 1</li>
+        <li><strong>La fonction de coût</strong> — mesurer à quel point le modèle se trompe (binary cross-entropy)</li>
+        <li><strong>Le gradient descent</strong> — ajuster les poids pour réduire l'erreur, pas à pas</li>
+        <li><strong>La normalisation</strong> — pourquoi il faut mettre toutes les features à la même échelle</li>
+        <li><strong>One-vs-All</strong> — comment passer de 2 classes à 4 classes</li>
+        <li><strong>Le pipeline complet</strong> — tout relier dans ton code</li>
+      </ol>
+
+      <aside class="tangent">
+        <span class="tangent-label">Bonne nouvelle</span>
+        <p>
+          Tu connais déjà le gradient descent grâce à ft_linear_regression. La mécanique est <em>exactement la même</em> : on calcule un coût, on dérive, on ajuste les poids. Ce qui change, c'est la fonction de coût et la façon de formuler l'hypothèse. Le reste, tu le connais.
+        </p>
+      </aside>
+
+      <h2>7. Pour aller plus loin — vidéos</h2>
+      <p>Voici des vidéos pour accompagner ce chapitre :</p>
+      <ul>
+        <li><a href="https://www.youtube.com/watch?v=yIYKR4sgzI8" target="_blank">StatQuest: Logistic Regression</a> — explication visuelle et intuitive (EN)</li>
+        <li><a href="https://www.youtube.com/watch?v=l5-E1rzZ2cA" target="_blank">Comprendre La Régression Logistique En Moins DE 10 Min</a> — résumé rapide (FR)</li>
+        <li><a href="https://www.youtube.com/watch?v=h9M9GpGmdOE" target="_blank">Régression logistique — Principe</a> — explication du principe fondamental (FR)</li>
+      </ul>
+
+      <nav class="chapter-nav">
+        <span></span>
+        <a class="next" href="02-sigmoide.html">
+          <span class="nav-label">Suivant →</span>
+          <span class="nav-title">Transformer un score en probabilité</span>
+        </a>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>
