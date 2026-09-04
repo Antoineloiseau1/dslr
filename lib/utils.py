@@ -1,5 +1,13 @@
 import math
 
+
+HOUSE_COLORS = {
+    "Gryffindor": "#e74c3c",
+    "Slytherin": "#2ecc71",
+    "Ravenclaw": "#3498db",
+    "Hufflepuff": "#f1c40f",
+}
+
 def to_float(value: str):
     if not value:
         return None
@@ -11,10 +19,3 @@ def to_float(value: str):
     except ValueError:
         return None
 
-
-HOUSE_COLORS = {
-    "Gryffindor": "#e74c3c",
-    "Slytherin": "#2ecc71",
-    "Ravenclaw": "#3498db",
-    "Hufflepuff": "#f1c40f",
-}
