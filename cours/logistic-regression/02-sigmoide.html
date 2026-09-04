@@ -187,7 +187,60 @@
       </p>
 
       <!-- ═══════════════════════════════════════════ -->
-      <h2>3. L'astuce de la colonne de 1</h2>
+      <h2>3. Le rôle du biais : positionner la frontière</h2>
+      <p>
+        On a vu que $\theta_0$ est le « biais ». Mais <strong>à quoi sert-il concrètement</strong> ? Pourquoi on ne peut pas s'en passer ?
+      </p>
+      <p>
+        La <strong>frontière de décision</strong>, c'est l'endroit où le modèle hésite entre « oui » et « non » — là où $h_\theta(x) = 0.5$. Or $g(z) = 0.5$ quand $z = 0$. Donc la frontière est là où :
+      </p>
+      $$\theta_0 + \theta_1 x_1 + \theta_2 x_2 + \ldots = 0$$
+
+      <h3>Cas simplifié : une seule feature</h3>
+      <p>
+        Prenons un exemple concret. On veut classer les Hufflepuff avec une seule feature : la note en <strong>Herbology</strong>. Les Hufflepuff ont des notes entre 6 et 9, les autres entre 1 et 5. Il faut tracer la frontière vers $x \approx 5.5$.
+      </p>
+      <p>
+        L'hypothèse est $h(x) = g(\theta_0 + \theta_1 \cdot x)$. La frontière est à :
+      </p>
+      $$\theta_0 + \theta_1 \cdot x = 0 \quad\Longrightarrow\quad x = -\frac{\theta_0}{\theta_1}$$
+
+      <h3>Sans biais ($\theta_0 = 0$)</h3>
+      <p>
+        Si on retire le biais, l'hypothèse devient $h(x) = g(\theta_1 \cdot x)$. La frontière est forcément à :
+      </p>
+      $$x = -\frac{0}{\theta_1} = 0$$
+      <p>
+        La frontière est <strong>bloquée à $x = 0$</strong>. On peut rendre la courbe plus raide (augmenter $\theta_1$) ou plus douce (diminuer $\theta_1$), mais on ne peut pas la <em>déplacer</em>. On ne peut pas séparer les Hufflepuff (notes 6–9) des autres (notes 1–5) : la frontière est à 0, bien trop à gauche.
+      </p>
+
+      <h3>Avec biais</h3>
+      <p>
+        Avec $\theta_0$, la frontière est à $x = -\theta_0 / \theta_1$. Par exemple avec $\theta_0 = -8$ et $\theta_1 = 1.5$ :
+      </p>
+      $$x = -\frac{-8}{1.5} = 5.3$$
+      <p>
+        La frontière est à $5.3$ — pile entre les deux groupes. Le gradient descent va ajuster $\theta_0$ pour positionner la frontière au bon endroit, et $\theta_1$ pour régler la raideur de la transition.
+      </p>
+
+      <div class="pull-quote">
+        $\theta_1$ contrôle la <strong>raideur</strong> de la courbe sigmoïde (transition brutale ou douce). $\theta_0$ contrôle la <strong>position</strong> de la frontière de décision (la décaler à gauche ou à droite).
+      </div>
+
+      <h3>En dimension supérieure</h3>
+      <p>
+        Avec 11 features, la frontière n'est plus un point sur un axe mais un <strong>hyperplan</strong> dans un espace à 11 dimensions. Le biais $\theta_0$ joue le même rôle : il permet de translater cet hyperplan. Sans lui, l'hyperplan passe forcément par l'origine — une contrainte qui rend le modèle presque inutile sur des données réelles.
+      </p>
+
+      <aside class="tangent">
+        <span class="tangent-label">Analogie</span>
+        <p>
+          C'est la même histoire qu'en régression linéaire. La droite $y = ax$ passe par l'origine. En ajoutant $b$, la droite $y = ax + b$ peut se positionner n'importe où. Le biais $\theta_0$ joue exactement le rôle du $b$ : c'est le <strong>curseur de position</strong>.
+        </p>
+      </aside>
+
+      <!-- ═══════════════════════════════════════════ -->
+      <h2>4. L'astuce de la colonne de 1</h2>
       <p>
         Tu as vu qu'on ajoute un $1$ au début de $x$. Pourquoi ? Pour que le biais $\theta_0$ soit inclus automatiquement dans le produit scalaire, sans cas spécial dans le code :
       </p>
@@ -202,7 +255,7 @@
       </aside>
 
       <!-- ═══════════════════════════════════════════ -->
-      <h2>4. En Python</h2>
+      <h2>5. En Python</h2>
       <p>
         La sigmoïde se code en une seule fonction :
       </p>
@@ -232,7 +285,7 @@
       </aside>
 
       <!-- ═══════════════════════════════════════════ -->
-      <h2>5. Récapitulatif visuel</h2>
+      <h2>6. Récapitulatif visuel</h2>
       <p>
         Voici le chemin complet d'une prédiction, étape par étape :
       </p>
@@ -253,7 +306,7 @@
 <span class="cm">Résultat : 54.2% de chances → le modèle hésite</span></pre>
 
       <!-- ═══════════════════════════════════════════ -->
-      <h2>6. Résumé</h2>
+      <h2>7. Résumé</h2>
       <ul>
         <li>$g(z) = \frac{1}{1 + e^{-z}}$ prend n'importe quel nombre → sort un nombre entre 0 et 1</li>
         <li>$\theta^T x = \theta_0 + \theta_1 x_1 + \theta_2 x_2 + \ldots$ = somme pondérée des notes</li>
@@ -264,7 +317,7 @@
         Maintenant qu'on sait calculer une probabilité, il faut un moyen de mesurer <em>à quel point cette probabilité est fausse</em>. C'est le rôle de la <strong>fonction de coût</strong>.
       </p>
 
-      <h2>7. Pour aller plus loin — vidéos</h2>
+      <h2>8. Pour aller plus loin — vidéos</h2>
       <ul>
         <li><a href="https://www.youtube.com/watch?v=yIYKR4sgzI8" target="_blank">StatQuest: Logistic Regression</a> — explication visuelle et intuitive (EN)</li>
         <li><a href="https://www.youtube.com/watch?v=pZxtGLvVoWY" target="_blank">Régression logistique</a> — explication en français (FR)</li>

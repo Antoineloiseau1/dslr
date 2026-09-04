@@ -60,9 +60,26 @@ class Column:
         upper = sorted_values[upper_index]
         return lower + (upper - lower) * fraction
 
+    def impute_mean(self) -> 'Column':
+        total = 0
+        count = 0
+        for v in self.values:
+            if v is not None:
+                total += v
+                count += 1
+        m = total / count
+        return Column(self.name, [v if v is not None else m for v in self.values])
 
-        
-        
+    def standardize(self) -> 'Column':
+        m = self.mean()
+        s = self.std()
+        return Column(self.name, [(v - m) / s for v in self.values])
+
+
+def columns_to_rows(columns: list[Column]) -> list[list[float]]:
+    return [list(row) for row in zip(*(col.values for col in columns))]
+
+
 @dataclass
 class Dataset:
     header: list[str]
@@ -140,18 +157,12 @@ class Dataset:
                 values_b.append(converted_b)
         return Column(feature_a, values_a), Column(feature_b, values_b)
 
-    def extract_matrix(self, feature_names: list[str], label_name: str) -> tuple[list[list[float | None]], list[str]]:
-        labels = []
-        features = []
-        label_index = self.header.index(label_name)
-        feature_indexes = [self.header.index(name) for name in feature_names]
-        for row in self.rows:
-            labels.append(row[label_index])
-            feature_list = []
-            for index in feature_indexes:
-                    feature_list.append(to_float(row[index]))
-            features.append(feature_list)
-        return features, labels
+    def extract_nullable_column(self, name: str) -> Column:
+        if name not in self.header:
+            raise ValueError(f"{name} not found in dataset")
+        index = self.header.index(name)
+        values = [to_float(row[index]) for row in self.rows]
+        return Column(name, values)
 
 
 def covariance(col_a: Column, col_b: Column) -> float:
@@ -224,26 +235,3 @@ def gradient_descent(rows: list[list[float]], thetas: list[float], targets: list
         gradients[j] /= m
     return gradients
 
-def impute_mean(matrix: list[list[float]]) -> list[list[float]]:
-    means = []
-    nb_cols = len(matrix[0])
-    for i in range(nb_cols):
-        total = 0
-        nb_rows = 0
-        for row in matrix:
-            if row[i] is not None:
-                total += row[i]
-                nb_rows += 1
-        means.append(total / nb_rows)
-    for i in range(nb_cols):
-        for row in matrix:
-            if row[i] is None:
-                row[i] = means[i]
-    return matrix
-
-def standard_matrix(matrix: list[list[float]]) -> list[list[float]]: 
-    return 
-
-
-def standardization(col: Column):
-    return Column(col.name, [(value - col.mean) / col.std for value in col.value])
